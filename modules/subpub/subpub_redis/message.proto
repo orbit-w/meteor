@@ -1,0 +1,8 @@
+syntax = "proto3";
+package subpub_redis;
+option go_package = "";
+
+message PubMessage {
+  int32 Pid = 1;
+  bytes Data = 2;
+}

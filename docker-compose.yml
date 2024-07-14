@@ -1,0 +1,34 @@
+version: '3.9'
+services:
+  redis:
+    image: redis:6
+    ports:
+      - "6379:6379"
+
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+
+  mysql:
+    image: mysql/mysql-server:latest
+    environment:
+      - MYSQL_USER=root
+      - MYSQL_ROOT_PASSWORD=
+      - MYSQL_ROOT_HOST=%
+      - MYSQL_DATABASE=
+
+  server:
+    image: server:latest
+    stop_grace_period: 30s
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    links:
+      - redis
+      - mysql
+    expose:
+      - "8888"
