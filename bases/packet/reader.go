@@ -21,7 +21,7 @@ func Reader(data []byte) IPacket {
 // is drained. The return value n is the number of bytes read. If the
 // buffer has no data to return, err is io.EOF (unless len(p) is zero);
 // otherwise it is nil.
-func (p *Packet) Read(buf []byte) (n int, err error) {
+func (p *BigEndianPacket) Read(buf []byte) (n int, err error) {
 	if p.Empty() {
 		p.Reset()
 		if len(buf) == 0 {
@@ -34,7 +34,7 @@ func (p *Packet) Read(buf []byte) (n int, err error) {
 	return n, nil
 }
 
-func (p *Packet) ReadBool() (ret bool, err error) {
+func (p *BigEndianPacket) ReadBool() (ret bool, err error) {
 	var b byte
 	b, err = p.ReadByte()
 	if err != nil {
@@ -44,7 +44,7 @@ func (p *Packet) ReadBool() (ret bool, err error) {
 	return b == byte(1), nil
 }
 
-func (p *Packet) ReadByte() (ret byte, err error) {
+func (p *BigEndianPacket) ReadByte() (ret byte, err error) {
 	if p.off >= uint(p.Len()) {
 		err = ErrReadByteFailed
 		return
@@ -54,13 +54,13 @@ func (p *Packet) ReadByte() (ret byte, err error) {
 	return
 }
 
-func (p *Packet) ReadInt8() (ret int8, err error) {
+func (p *BigEndianPacket) ReadInt8() (ret int8, err error) {
 	ret = int8(p.buf[p.off])
 	p.off++
 	return
 }
 
-func (p *Packet) ReadInt16() (int16, error) {
+func (p *BigEndianPacket) ReadInt16() (int16, error) {
 	ret, err := p.ReadUint16()
 	if err != nil {
 		return 0, err
@@ -68,7 +68,7 @@ func (p *Packet) ReadInt16() (int16, error) {
 	return int16(ret), err
 }
 
-func (p *Packet) ReadInt32() (int32, error) {
+func (p *BigEndianPacket) ReadInt32() (int32, error) {
 	ret, err := p.ReadUint32()
 	if err != nil {
 		return 0, err
@@ -76,7 +76,7 @@ func (p *Packet) ReadInt32() (int32, error) {
 	return int32(ret), err
 }
 
-func (p *Packet) ReadInt64() (int64, error) {
+func (p *BigEndianPacket) ReadInt64() (int64, error) {
 	ret, err := p.ReadUint64()
 	if err != nil {
 		return 0, err
@@ -84,7 +84,7 @@ func (p *Packet) ReadInt64() (int64, error) {
 	return int64(ret), err
 }
 
-func (p *Packet) ReadUint16() (ret uint16, err error) {
+func (p *BigEndianPacket) ReadUint16() (ret uint16, err error) {
 	var shift uint = 2
 	if p.OutOfRange(shift) {
 		return 0, ErrOutOfRange
@@ -96,7 +96,7 @@ func (p *Packet) ReadUint16() (ret uint16, err error) {
 	return
 }
 
-func (p *Packet) ReadUint32() (ret uint32, err error) {
+func (p *BigEndianPacket) ReadUint32() (ret uint32, err error) {
 	var shift uint = 4
 	if p.OutOfRange(shift) {
 		return 0, ErrOutOfRange
@@ -108,7 +108,7 @@ func (p *Packet) ReadUint32() (ret uint32, err error) {
 	return
 }
 
-func (p *Packet) ReadUint64() (ret uint64, err error) {
+func (p *BigEndianPacket) ReadUint64() (ret uint64, err error) {
 	var shift uint = 8
 	if p.OutOfRange(shift) {
 		return 0, ErrOutOfRange
@@ -119,7 +119,7 @@ func (p *Packet) ReadUint64() (ret uint64, err error) {
 	return
 }
 
-func (p *Packet) ReadBytes() (ret []byte, err error) {
+func (p *BigEndianPacket) ReadBytes() (ret []byte, err error) {
 	v, rErr := p.ReadUint16()
 	if rErr != nil {
 		err = rErr
@@ -132,7 +132,7 @@ func (p *Packet) ReadBytes() (ret []byte, err error) {
 	return
 }
 
-func (p *Packet) ReadBytes32() (ret []byte, err error) {
+func (p *BigEndianPacket) ReadBytes32() (ret []byte, err error) {
 	v, rErr := p.ReadUint32()
 	if rErr != nil {
 		err = rErr
