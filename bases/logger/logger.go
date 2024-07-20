@@ -21,6 +21,8 @@ func New(fileName string, lv zapcore.Level) *zap.Logger {
 }
 
 // NewDevelopmentLogger 实例化开发环境日志
+// StackTraces are included on logs of WarnLevel and above.
+// Warn 级别以上，包含堆栈信息
 func NewDevelopmentLogger() *zap.Logger {
 	cfg := zap.NewDevelopmentConfig()
 	cfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
