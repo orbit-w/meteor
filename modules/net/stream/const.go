@@ -1,4 +1,4 @@
-package agent_stream
+package stream
 
 import "time"
 

@@ -30,7 +30,7 @@ func NewReceiveBuf[V iRecvMsg]() *ReceiveBuf[V] {
 	}
 }
 
-func (rb *ReceiveBuf[V]) OnClose() {
+func (rb *ReceiveBuf[V]) Terminate() {
 	rb.mu.Lock()
 	defer rb.mu.Unlock()
 	rb.err = ErrCanceled
