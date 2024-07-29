@@ -1,4 +1,4 @@
-package stream
+package mux
 
 import (
 	"sync"
@@ -11,54 +11,54 @@ import (
    @2024 7月 周日 17:56
 */
 
-type Streamers struct {
+type VirtualConns struct {
 	idx     atomic.Int64
 	rw      sync.RWMutex
-	streams map[int64]*Streamer
+	streams map[int64]*VirtualConn
 }
 
-func newStreamers() *Streamers {
-	return &Streamers{
+func newConns() *VirtualConns {
+	return &VirtualConns{
 		rw:      sync.RWMutex{},
-		streams: make(map[int64]*Streamer),
+		streams: make(map[int64]*VirtualConn),
 	}
 }
 
-func (ins *Streamers) Id() int64 {
+func (ins *VirtualConns) Id() int64 {
 	return ins.idx.Add(1)
 }
 
-func (ins *Streamers) Get(id int64) (*Streamer, bool) {
+func (ins *VirtualConns) Get(id int64) (*VirtualConn, bool) {
 	ins.rw.RLock()
 	s, ok := ins.streams[id]
 	ins.rw.RUnlock()
 	return s, ok
 }
 
-func (ins *Streamers) Exist(id int64) (exist bool) {
+func (ins *VirtualConns) Exist(id int64) (exist bool) {
 	ins.rw.RLock()
 	_, exist = ins.streams[id]
 	ins.rw.RUnlock()
 	return
 }
 
-func (ins *Streamers) Len() int {
+func (ins *VirtualConns) Len() int {
 	return len(ins.streams)
 }
 
-func (ins *Streamers) Reg(id int64, s *Streamer) {
+func (ins *VirtualConns) Reg(id int64, s *VirtualConn) {
 	ins.rw.Lock()
 	ins.streams[id] = s
 	ins.rw.Unlock()
 }
 
-func (ins *Streamers) Del(id int64) {
+func (ins *VirtualConns) Del(id int64) {
 	ins.rw.Lock()
 	delete(ins.streams, id)
 	ins.rw.Unlock()
 }
 
-func (ins *Streamers) GetAndDel(id int64) (*Streamer, bool) {
+func (ins *VirtualConns) GetAndDel(id int64) (*VirtualConn, bool) {
 	ins.rw.Lock()
 	s, exist := ins.streams[id]
 	if exist {
@@ -68,7 +68,7 @@ func (ins *Streamers) GetAndDel(id int64) (*Streamer, bool) {
 	return s, exist
 }
 
-func (ins *Streamers) Range(iter func(stream *Streamer)) {
+func (ins *VirtualConns) Range(iter func(stream *VirtualConn)) {
 	ins.rw.RLock()
 	for k := range ins.streams {
 		stream := ins.streams[k]
@@ -77,12 +77,12 @@ func (ins *Streamers) Range(iter func(stream *Streamer)) {
 	ins.rw.RUnlock()
 }
 
-func (ins *Streamers) Close(onClose func(stream *Streamer)) {
+func (ins *VirtualConns) Close(onClose func(stream *VirtualConn)) {
 	ins.rw.Lock()
 	defer ins.rw.Unlock()
 	for k := range ins.streams {
 		stream := ins.streams[k]
 		onClose(stream)
 	}
-	ins.streams = make(map[int64]*Streamer)
+	ins.streams = make(map[int64]*VirtualConn)
 }

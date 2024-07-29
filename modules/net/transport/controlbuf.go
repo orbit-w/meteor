@@ -105,7 +105,7 @@ func (ins *ControlBuffer) Set(buf packet.IPacket) error {
 	return nil
 }
 
-// OnClose TODO: Is it reasonable to reject stream input immediately?
+// OnClose TODO: Is it reasonable to reject mux input immediately?
 func (ins *ControlBuffer) OnClose() {
 	ins.mu.Lock()
 	defer ins.mu.Unlock()

@@ -65,7 +65,7 @@ func ServeTest(t TestingT, host string) IServer {
 						break
 					}
 
-					log.Println("conn read stream failed: ", err.Error())
+					log.Println("conn read mux failed: ", err.Error())
 					break
 				}
 				//log.Println("receive message from client: ", in.Data()[0])

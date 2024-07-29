@@ -1,4 +1,4 @@
-package stream
+package mux
 
 import "github.com/orbit-w/meteor/bases/packet"
 
@@ -10,14 +10,14 @@ import "github.com/orbit-w/meteor/bases/packet"
 
 type Codec struct{}
 
-type StreamingMsg struct {
+type Msg struct {
 	Type     int8
 	End      bool
 	StreamId int64
 	Data     packet.IPacket
 }
 
-func (f *Codec) Encode(msg *StreamingMsg) packet.IPacket {
+func (f *Codec) Encode(msg *Msg) packet.IPacket {
 	w := packet.Writer()
 	w.WriteInt8(msg.Type)
 	w.WriteBool(msg.End)
@@ -30,9 +30,9 @@ func (f *Codec) Encode(msg *StreamingMsg) packet.IPacket {
 	return w
 }
 
-func (f *Codec) Decode(data packet.IPacket) (StreamingMsg, error) {
+func (f *Codec) Decode(data packet.IPacket) (Msg, error) {
 	defer data.Return()
-	msg := StreamingMsg{}
+	msg := Msg{}
 	ft, err := data.ReadInt8()
 	if err != nil {
 		return msg, err

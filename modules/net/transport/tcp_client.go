@@ -45,8 +45,12 @@ type TcpClient struct {
 
 // DialWithOps Encapsulates asynchronous TCP connection establishment (with retries and backoff)
 func DialWithOps(remoteAddr string, _ops ...*DialOption) IConn {
+	return DialContextWithOps(context.Background(), remoteAddr, _ops...)
+}
+
+func DialContextWithOps(ctx context.Context, remoteAddr string, _ops ...*DialOption) IConn {
 	dp := parseOptions(_ops...)
-	ctx, cancel := context.WithCancel(context.Background())
+	_ctx, cancel := context.WithCancel(ctx)
 	buf := new(ControlBuffer)
 	BuildControlBuffer(buf, dp.MaxIncomingPacket)
 	tc := &TcpClient{
@@ -57,7 +61,7 @@ func DialWithOps(remoteAddr string, _ops ...*DialOption) IConn {
 		dHandle:         dp.DisconnectHandler,
 		maxIncomingSize: dp.MaxIncomingPacket,
 		buf:             buf,
-		ctx:             ctx,
+		ctx:             _ctx,
 		cancel:          cancel,
 		codec:           gnetwork.NewCodec(dp.MaxIncomingPacket, false, ReadTimeout),
 		r:               gnetwork.NewBlockReceiver(),

@@ -1,4 +1,4 @@
-package stream
+package mux
 
 import "time"
 
@@ -25,4 +25,14 @@ type StreamState uint32
 const (
 	StreamActive StreamState = iota
 	StreamWriteDone
+)
+
+const (
+	MessageRaw = iota
+	MessageReplyRaw
+	MessageStreamHeartbeat
+	MessageStart
+	MessageClean
+
+	MessageCliHalfClosedAck
 )

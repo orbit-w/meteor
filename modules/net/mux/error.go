@@ -1,6 +1,9 @@
-package stream
+package mux
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 /*
    @Author: orbit-w
@@ -12,3 +15,7 @@ var (
 	ErrCancel   = errors.New("transport_err code: context canceled")
 	ErrConnDone = errors.New("error_the_conn_is_done")
 )
+
+func NewStreamBufSetErr(err error) error {
+	return errors.New(fmt.Sprintf("NewStream set failed: %s", err.Error()))
+}

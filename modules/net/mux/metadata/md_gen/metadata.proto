@@ -1,0 +1,6 @@
+syntax = "proto3";
+package pt;
+
+message MD {
+  map<string, string> Values = 1;
+}
