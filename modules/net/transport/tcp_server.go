@@ -4,6 +4,7 @@ import (
 	"context"
 	gnetwork "github.com/orbit-w/meteor/modules/net/network"
 	"net"
+	"time"
 )
 
 /*
@@ -29,8 +30,9 @@ func (t *TcpServer) Serve(host string, _handle func(conn IConn), op gnetwork.Acc
 	}
 
 	server := new(gnetwork.Server)
-	server.Serve(gnetwork.TCP, listener, func(ctx context.Context, generic net.Conn, maxIncomingPacket uint32, head, body []byte) {
-		conn := NewTcpServerConn(ctx, generic, maxIncomingPacket, head, body)
+	server.Serve(gnetwork.TCP, listener, func(ctx context.Context, generic net.Conn, maxIncomingPacket uint32, head, body []byte,
+		readTO, writeTO time.Duration) {
+		conn := NewTcpServerConn(ctx, generic, maxIncomingPacket, head, body, readTO, writeTO)
 		defer func() {
 			_ = conn.Close()
 		}()

@@ -41,6 +41,8 @@ type TcpClient struct {
 	sw      *sender_wrapper.SenderWrapper
 	r       *gnetwork.BlockReceiver
 	dHandle func(remoteNodeId string)
+
+	writeTimeout time.Duration
 }
 
 // DialWithOps Encapsulates asynchronous TCP connection establishment (with retries and backoff)
@@ -63,8 +65,9 @@ func DialContextWithOps(ctx context.Context, remoteAddr string, _ops ...*DialOpt
 		buf:             buf,
 		ctx:             _ctx,
 		cancel:          cancel,
-		codec:           gnetwork.NewCodec(dp.MaxIncomingPacket, false, ReadTimeout),
+		codec:           gnetwork.NewCodec(dp.MaxIncomingPacket, false, dp.ReadTimeout),
 		r:               gnetwork.NewBlockReceiver(),
+		writeTimeout:    dp.WriteTimeout,
 	}
 
 	go tc.handleDial(dp)
@@ -146,7 +149,7 @@ func (tc *TcpClient) sendData(data packet.IPacket) error {
 	if err != nil {
 		return err
 	}
-	if err = tc.conn.SetWriteDeadline(time.Now().Add(WriteTimeout)); err != nil {
+	if err = tc.conn.SetWriteDeadline(time.Now().Add(tc.writeTimeout)); err != nil {
 		body.Return()
 		return err
 	}
@@ -320,9 +323,19 @@ func parseOptions(ops ...*DialOption) (dp *DialOption) {
 		dp.IsBlock = op.IsBlock
 		dp.IsGzip = op.IsGzip
 		dp.DisconnectHandler = op.DisconnectHandler
+		dp.ReadTimeout = op.ReadTimeout
+		dp.WriteTimeout = op.WriteTimeout
 	}
 	if dp.MaxIncomingPacket <= 0 {
 		dp.MaxIncomingPacket = RpcMaxIncomingPacket
+	}
+
+	if dp.WriteTimeout <= 0 {
+		dp.WriteTimeout = WriteTimeout
+	}
+
+	if dp.ReadTimeout <= 0 {
+		dp.ReadTimeout = ReadTimeout
 	}
 	return
 }

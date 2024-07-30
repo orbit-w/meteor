@@ -3,6 +3,7 @@ package transport
 import (
 	"github.com/orbit-w/meteor/bases/packet"
 	"github.com/orbit-w/meteor/modules/net/network"
+	"time"
 )
 
 /*
@@ -33,6 +34,8 @@ type DialOption struct {
 	MaxIncomingPacket uint32
 	IsBlock           bool
 	IsGzip            bool
+	ReadTimeout       time.Duration
+	WriteTimeout      time.Duration
 	DisconnectHandler func(nodeId string)
 }
 

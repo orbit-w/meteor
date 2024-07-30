@@ -28,19 +28,22 @@ type TcpServerConn struct {
 	sw     *sender_wrapper.SenderWrapper
 	buf    *ControlBuffer
 	r      *network2.BlockReceiver
+
+	writeTimeout time.Duration
 }
 
-func NewTcpServerConn(ctx context.Context, _conn net.Conn, maxIncomingPacket uint32, head, body []byte) IConn {
+func NewTcpServerConn(ctx context.Context, _conn net.Conn, maxIncomingPacket uint32, head, body []byte, readTO, writeTO time.Duration) IConn {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	cCtx, cancel := context.WithCancel(ctx)
 	ts := &TcpServerConn{
-		conn:   _conn,
-		codec:  network2.NewCodec(maxIncomingPacket, false, ReadTimeout),
-		ctx:    cCtx,
-		cancel: cancel,
-		r:      network2.NewBlockReceiver(),
+		conn:         _conn,
+		codec:        network2.NewCodec(maxIncomingPacket, false, readTO),
+		ctx:          cCtx,
+		cancel:       cancel,
+		r:            network2.NewBlockReceiver(),
+		writeTimeout: writeTO,
 	}
 
 	sw := sender_wrapper.NewSender(ts.SendData)
@@ -83,7 +86,7 @@ func (ts *TcpServerConn) SendData(body packet.IPacket) error {
 		return err
 	}
 	defer pack.Return()
-	if err = ts.conn.SetWriteDeadline(time.Now().Add(WriteTimeout)); err != nil {
+	if err = ts.conn.SetWriteDeadline(time.Now().Add(ts.writeTimeout)); err != nil {
 		return err
 	}
 	_, err = ts.conn.Write(pack.Data())

@@ -45,6 +45,8 @@ func (c Config) ToAcceptorOptions() network2.AcceptorOptions {
 	return network2.AcceptorOptions{
 		MaxIncomingPacket: c.MaxIncomingPacket,
 		IsGzip:            c.IsGzip,
+		ReadTimeout:       c.ReadTimeout,
+		WriteTimeout:      c.WriteTimeout,
 	}
 }
 
@@ -52,7 +54,7 @@ func DefaultServerConfig() Config {
 	return Config{
 		MaxIncomingPacket: network2.MaxIncomingPacket,
 		IsGzip:            false,
-		ReadTimeout:       network2.ReadTimeout,
+		ReadTimeout:       ReadTimeout,
 		WriteTimeout:      WriteTimeout,
 	}
 }
