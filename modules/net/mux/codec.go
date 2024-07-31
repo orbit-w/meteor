@@ -11,49 +11,48 @@ import "github.com/orbit-w/meteor/bases/packet"
 type Codec struct{}
 
 type Msg struct {
-	Type     int8
-	End      bool
-	StreamId int64
-	Data     packet.IPacket
+	Type int8
+	End  bool
+	Id   int64
+	Data []byte
 }
 
 func (f *Codec) Encode(msg *Msg) packet.IPacket {
 	w := packet.Writer()
 	w.WriteInt8(msg.Type)
 	w.WriteBool(msg.End)
-	w.WriteInt64(msg.StreamId)
-	if data := msg.Data; data != nil {
+	w.WriteInt64(msg.Id)
+	if data := msg.Data; data != nil || len(data) > 0 {
 		msg.Data = nil
-		w.Write(data.Remain())
-		data.Return()
+		w.Write(data)
 	}
 	return w
 }
 
-func (f *Codec) Decode(data packet.IPacket) (Msg, error) {
-	defer data.Return()
+func (f *Codec) Decode(data []byte) (Msg, error) {
+	reader := packet.Reader(data)
+	defer reader.Return()
 	msg := Msg{}
-	ft, err := data.ReadInt8()
+	ft, err := reader.ReadInt8()
 	if err != nil {
 		return msg, err
 	}
 
-	end, err := data.ReadBool()
+	end, err := reader.ReadBool()
 	if err != nil {
 		return msg, err
 	}
 
-	sId, err := data.ReadUint64()
+	sId, err := reader.ReadUint64()
 	if err != nil {
 		return msg, err
 	}
 
-	msg.StreamId = int64(sId)
+	msg.Id = int64(sId)
 	msg.Type = ft
 	msg.End = end
-	if len(data.Remain()) > 0 {
-		reader := packet.Reader(data.Remain())
-		msg.Data = reader
+	if len(reader.Remain()) > 0 {
+		msg.Data = reader.CopyRemain()
 	}
 	return msg, nil
 }

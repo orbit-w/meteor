@@ -3,7 +3,6 @@ package metadata
 import (
 	"context"
 	"encoding/json"
-	"github.com/orbit-w/meteor/bases/packet"
 	"strings"
 )
 
@@ -48,6 +47,6 @@ func Marshal(m MD) ([]byte, error) {
 	return data, nil
 }
 
-func Unmarshal(buf packet.IPacket, dst *MD) error {
-	return json.Unmarshal(buf.Remain(), dst)
+func Unmarshal(data []byte, dst *MD) error {
+	return json.Unmarshal(data, dst)
 }

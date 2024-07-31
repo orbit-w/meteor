@@ -16,15 +16,13 @@ const (
 )
 
 const (
-	StateNormal = iota
-	StateStopped
+	StateMuxNormal = iota
+	StateMuxStopped
 )
 
-type StreamState uint32
-
 const (
-	StreamActive StreamState = iota
-	StreamWriteDone
+	ConnActive uint32 = iota
+	ConnWriteDone
 )
 
 const (
@@ -32,7 +30,7 @@ const (
 	MessageReplyRaw
 	MessageStreamHeartbeat
 	MessageStart
-	MessageClean
+	MessageFin
 
 	MessageCliHalfClosedAck
 )

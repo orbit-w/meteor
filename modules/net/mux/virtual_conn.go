@@ -2,8 +2,6 @@ package mux
 
 import (
 	"context"
-	"github.com/orbit-w/meteor/bases/packet"
-	"github.com/orbit-w/meteor/modules/net/mux/metadata"
 	"github.com/orbit-w/meteor/modules/net/network"
 	"github.com/orbit-w/meteor/modules/net/transport"
 	"sync/atomic"
@@ -15,94 +13,101 @@ import (
    @2024 7月 周日 12:03
 */
 
+type IConn interface {
+	Send(data []byte) error
+	Recv() ([]byte, error)
+	Close()
+	CloseSend() error
+}
+
+type IServerConn interface {
+	Send(data []byte) error
+	Recv() ([]byte, error)
+}
+
 type VirtualConn struct {
-	id    int64
-	state StreamState
-	conn  transport.IConn
-	codec *Codec
-	rb    *network.BlockReceiver
+	id     int64
+	state  atomic.Uint32
+	conn   transport.IConn
+	codec  *Codec
+	mux    *Multiplexer
+	rb     *network.BlockReceiver
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
-func virtualConn(ctx context.Context, _id int64, _conn transport.IConn) (*VirtualConn, error) {
+func virtualConn(f context.Context, _id int64, _conn transport.IConn, mux *Multiplexer) *VirtualConn {
+	ctx, cancel := context.WithCancel(f)
 	s := &VirtualConn{
-		id:    _id,
-		conn:  _conn,
-		state: StreamActive,
-		rb:    network.NewBlockReceiver(),
-		codec: new(Codec),
+		id:     _id,
+		conn:   _conn,
+		rb:     network.NewBlockReceiver(),
+		codec:  new(Codec),
+		ctx:    ctx,
+		cancel: cancel,
 	}
-	return s, s.start(ctx)
+	return s
 }
 
-func (s *VirtualConn) start(ctx context.Context) error {
-	md, _ := metadata.FromMetaContext(ctx)
-	data, err := metadata.Marshal(md)
-	if err != nil {
-		return err
+func (vc *VirtualConn) Id() int64 {
+	return vc.id
+}
+
+func (vc *VirtualConn) Send(data []byte) error {
+	return vc.send(data, false)
+}
+
+func (vc *VirtualConn) Recv() ([]byte, error) {
+	return vc.rb.Recv()
+}
+
+func (vc *VirtualConn) Close() {
+	vc.rb.OnClose(ErrCancel)
+}
+
+func (vc *VirtualConn) CloseSend() error {
+	if !vc.isClient() {
+		return nil
 	}
-
-	fp := s.codec.Encode(&Msg{
-		Type:     MessageStart,
-		StreamId: s.Id(),
-		Data:     packet.Reader(data),
-	})
-	defer fp.Return()
-
-	if err = s.conn.Send(fp.Data()); err != nil {
-		return NewStreamBufSetErr(err)
-	}
-	return nil
+	return vc.send(nil, true)
 }
 
-func (s *VirtualConn) Id() int64 {
-	return s.id
+func (vc *VirtualConn) OnClose(err error) {
+	vc.rb.OnClose(err)
 }
 
-func (s *VirtualConn) Recv() ([]byte, error) {
-	return s.rb.Recv()
+func (vc *VirtualConn) put(in []byte) {
+	vc.rb.Put(in, nil)
 }
 
-func (s *VirtualConn) OnClose() {
-	s.rb.OnClose(ErrCancel)
-}
-
-func (s *VirtualConn) send(data []byte, isLast bool) error {
+func (vc *VirtualConn) send(data []byte, isLast bool) error {
 	switch {
 	case isLast:
-		if !s.compareAndSwapState(StreamActive, StreamWriteDone) {
+		if !vc.state.CompareAndSwap(ConnActive, ConnWriteDone) {
 			return ErrConnDone
 		}
-	case s.getState() != StreamActive:
+	case vc.state.Load() != ConnActive:
 		return ErrConnDone
 	}
 
-	var reader packet.IPacket
-	if data != nil && len(data) > 0 {
-		reader = packet.Reader(data)
-	}
-
 	msg := Msg{
-		Type:     MessageRaw,
-		StreamId: s.Id(),
-		Data:     reader,
-		End:      isLast,
+		Type: MessageRaw,
+		Id:   vc.Id(),
+		Data: data,
+		End:  isLast,
 	}
-	fp := s.codec.Encode(&msg)
-	if err := s.conn.Send(fp.Data()); err != nil {
+	return vc.sendMsg(&msg)
+}
+
+func (vc *VirtualConn) sendMsg(msg *Msg) error {
+	fp := vc.codec.Encode(msg)
+	if err := vc.conn.Send(fp.Data()); err != nil {
 		return err
 	}
 	fp.Return()
 	return nil
 }
 
-func (s *VirtualConn) swapState(st StreamState) StreamState {
-	return StreamState(atomic.SwapUint32((*uint32)(&s.state), uint32(st)))
-}
-
-func (s *VirtualConn) compareAndSwapState(old, new StreamState) bool {
-	return atomic.CompareAndSwapUint32((*uint32)(&s.state), uint32(old), uint32(new))
-}
-
-func (s *VirtualConn) getState() StreamState {
-	return StreamState(atomic.LoadUint32((*uint32)(&s.state)))
+func (vc *VirtualConn) isClient() bool {
+	return vc.mux.isClient
 }

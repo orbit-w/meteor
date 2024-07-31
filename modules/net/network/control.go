@@ -14,7 +14,7 @@ type iRecvMsg interface {
 	Err() error
 }
 
-// ReceiveBuf TODO: 资源泄漏？
+// ReceiveBuf is an unbounded channel of iRecvMsg structs.
 type ReceiveBuf[V iRecvMsg] struct {
 	c   chan V
 	mu  sync.Mutex
@@ -28,13 +28,6 @@ func NewReceiveBuf[V iRecvMsg]() *ReceiveBuf[V] {
 		c:   make(chan V, 1),
 		buf: make([]V, 0),
 	}
-}
-
-func (rb *ReceiveBuf[V]) Terminate() {
-	rb.mu.Lock()
-	defer rb.mu.Unlock()
-	rb.err = ErrCanceled
-	close(rb.c)
 }
 
 func (rb *ReceiveBuf[V]) put(r V) error {
@@ -76,4 +69,8 @@ func (rb *ReceiveBuf[V]) load() {
 
 func (rb *ReceiveBuf[V]) get() <-chan V {
 	return rb.c
+}
+
+func (rb *ReceiveBuf[V]) getErr() error {
+	return rb.err
 }

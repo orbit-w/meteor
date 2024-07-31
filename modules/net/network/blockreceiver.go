@@ -1,9 +1,5 @@
 package network
 
-import (
-	"github.com/orbit-w/meteor/bases/packet"
-)
-
 type recvMsg struct {
 	in  []byte
 	err error
@@ -11,13 +7,6 @@ type recvMsg struct {
 
 func (r recvMsg) Err() error {
 	return r.err
-}
-
-type IReceiver interface {
-	//Recv blocking read
-	read() (in packet.IPacket, err error)
-	put(in packet.IPacket, err error)
-	onClose(err error)
 }
 
 type BlockReceiver struct {
@@ -55,4 +44,8 @@ func (r *BlockReceiver) OnClose(err error) {
 	_ = r.buf.put(recvMsg{
 		err: err,
 	})
+}
+
+func (r *BlockReceiver) GetErr() error {
+	return r.buf.getErr()
 }
