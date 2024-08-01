@@ -45,6 +45,7 @@ func virtualConn(f context.Context, _id int64, _conn transport.IConn, mux *Multi
 		codec:  new(Codec),
 		ctx:    ctx,
 		cancel: cancel,
+		mux:    mux,
 	}
 	return s
 }

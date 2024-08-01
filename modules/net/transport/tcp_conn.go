@@ -70,8 +70,8 @@ func (ts *TcpServerConn) SendPack(out packet.IPacket) (err error) {
 	return
 }
 
-func (ts *TcpServerConn) Recv() ([]byte, error) {
-	return ts.r.Recv()
+func (ts *TcpServerConn) Recv(ctx context.Context) ([]byte, error) {
+	return ts.r.Recv(ctx)
 }
 
 func (ts *TcpServerConn) Close() error {

@@ -90,8 +90,8 @@ func (tc *TcpClient) SendPack(out packet.IPacket) error {
 	return err
 }
 
-func (tc *TcpClient) Recv() ([]byte, error) {
-	return tc.r.Recv()
+func (tc *TcpClient) Recv(ctx context.Context) ([]byte, error) {
+	return tc.r.Recv(ctx)
 }
 
 func (tc *TcpClient) Close() error {

@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"context"
 	"errors"
 	"io"
 	"log"
@@ -16,6 +17,7 @@ var (
 func Test_Transport(t *testing.T) {
 	host := "127.0.0.1:6800"
 	s := ServeTest(t, host)
+	ctx := context.Background()
 
 	conn := DialWithOps(host, &DialOption{
 		RemoteNodeId:  "node_0",
@@ -27,7 +29,7 @@ func Test_Transport(t *testing.T) {
 
 	go func() {
 		for {
-			in, err := conn.Recv()
+			in, err := conn.Recv(ctx)
 			if err != nil {
 				if IsCancelError(err) || errors.Is(err, io.EOF) {
 					log.Println("EOF")
@@ -51,11 +53,12 @@ func ServeTest(t TestingT, host string) IServer {
 	var (
 		server IServer
 		err    error
+		ctx    = context.Background()
 	)
 	ServeOnce.Do(func() {
 		server, err = Serve("tcp", host, func(conn IConn) {
 			for {
-				in, err := conn.Recv()
+				in, err := conn.Recv(ctx)
 				if err != nil {
 					if IsClosedConnError(err) {
 						break

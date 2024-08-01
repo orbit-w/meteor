@@ -34,7 +34,7 @@ func (s *Server) ServeByConfig(addr string, handle func(conn IServerConn) error,
 	s.cancel = cancel
 
 	ts, err := transport.Serve("tcp", addr, func(conn transport.IConn) {
-		mux := newMultiplexer(s.ctx, conn, false)
+		mux := newMultiplexer(s.ctx, conn, false, s)
 		mux.recvLoop()
 	})
 	if err != nil {

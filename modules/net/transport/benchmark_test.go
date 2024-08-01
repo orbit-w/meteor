@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"context"
 	"errors"
 	"io"
 	"log"
@@ -22,9 +23,11 @@ func Benchmark_Send_Test(b *testing.B) {
 		CurrentNodeId: "node_1",
 	})
 
+	ctx := context.Background()
+
 	go func() {
 		for {
-			_, err := conn.Recv()
+			_, err := conn.Recv(ctx)
 			if err != nil {
 				if IsCancelError(err) || errors.Is(err, io.EOF) {
 					log.Println("Recv failed: ", err.Error())
@@ -40,7 +43,7 @@ func Benchmark_Send_Test(b *testing.B) {
 	b.ResetTimer()
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		_ = conn.Write(w)
+		_ = conn.Send(w)
 	}
 	b.StopTimer()
 	time.Sleep(time.Second * 5)

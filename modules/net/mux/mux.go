@@ -37,12 +37,12 @@ type Multiplexer struct {
 }
 
 func NewMultiplexer(f context.Context, conn transport.IConn, isClient bool) IMux {
-	mux := newMultiplexer(f, conn, isClient)
+	mux := newMultiplexer(f, conn, isClient, nil)
 	go mux.recvLoop()
 	return mux
 }
 
-func newMultiplexer(f context.Context, conn transport.IConn, isClient bool) *Multiplexer {
+func newMultiplexer(f context.Context, conn transport.IConn, isClient bool, server *Server) *Multiplexer {
 	ctx, cancel := context.WithCancel(f)
 	mux := &Multiplexer{
 		isClient:     isClient,
@@ -51,6 +51,7 @@ func newMultiplexer(f context.Context, conn transport.IConn, isClient bool) *Mul
 		ctx:          ctx,
 		cancel:       cancel,
 		codec:        new(Codec),
+		server:       server,
 	}
 	return mux
 }
@@ -94,6 +95,7 @@ func (mux *Multiplexer) recvLoop() {
 	var (
 		in  []byte
 		err error
+		ctx = context.Background()
 	)
 
 	defer func() {
@@ -117,7 +119,7 @@ func (mux *Multiplexer) recvLoop() {
 	var msg Msg
 
 	for {
-		in, err = mux.conn.Recv()
+		in, err = mux.conn.Recv(ctx)
 		if err != nil {
 			return
 		}
@@ -139,20 +141,10 @@ func (mux *Multiplexer) recvLoop() {
 // 业务侧只需要break/return即可
 func (mux *Multiplexer) acceptVirtualConn(ctx context.Context, conn transport.IConn, id int64) {
 	vc := virtualConn(ctx, id, conn, mux)
-	defer func() {
-		if _, exist := mux.virtualConns.GetAndDel(id); exist {
-			err := vc.rb.GetErr()
-			if err == nil {
-				vc.sendMsgFin()
-			}
-		}
-
-		// Close the stream
-		// Simultaneously disconnect the input and output of virtual connections
-		vc.OnClose(ErrCancel)
-	}()
-
-	mux.handleVirtualConn(vc)
+	mux.virtualConns.Reg(id, vc)
+	utils.GoRecoverPanic(func() {
+		mux.handleVirtualConn(vc)
+	})
 }
 
 func (mux *Multiplexer) handleVirtualConn(conn *VirtualConn) {
@@ -160,6 +152,17 @@ func (mux *Multiplexer) handleVirtualConn(conn *VirtualConn) {
 		if r := recover(); r != nil {
 			debug.PrintStack()
 		}
+
+		if _, exist := mux.virtualConns.GetAndDel(conn.Id()); exist {
+			err := conn.rb.GetErr()
+			if err == nil {
+				conn.sendMsgFin()
+			}
+		}
+
+		// Close the stream
+		// Simultaneously disconnect the input and output of virtual connections
+		conn.OnClose(ErrCancel)
 	}()
 
 	handle := mux.server.handle
@@ -207,9 +210,7 @@ func handleDataServerSide(mux *Multiplexer, in *Msg) {
 		}
 
 		ctx := metadata.NewMetaContext(mux.ctx, md)
-		utils.GoRecoverPanic(func() {
-			mux.acceptVirtualConn(ctx, mux.conn, in.Id)
-		})
+		mux.acceptVirtualConn(ctx, mux.conn, in.Id)
 
 	case MessageRaw:
 		streamId := in.Id

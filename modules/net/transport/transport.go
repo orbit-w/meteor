@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"context"
 	"github.com/orbit-w/meteor/bases/packet"
 	"github.com/orbit-w/meteor/modules/net/network"
 	"time"
@@ -19,7 +20,7 @@ type IConn interface {
 	// SendPack TcpServerConn obj does not implicitly call IPacket.Return to return the
 	// packet to the pool, and the user needs to explicitly call it.
 	SendPack(out packet.IPacket) (err error)
-	Recv() ([]byte, error)
+	Recv(ctx context.Context) ([]byte, error)
 	Close() error
 }
 
