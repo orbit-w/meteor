@@ -14,9 +14,20 @@ import (
 */
 
 type IConn interface {
+	// Send for a virtual conn, it is safe to call Send in multiple goroutines
+	// 中文：对于同一个虚拟连接，可以在多个goroutine中安全地调用Send
 	Send(data []byte) error
+
+	// Recv blocks until it receives a message into m or the virtual conn is
+	// done. It returns io.EOF when the virtual conn completes successfully.
+	// Under normal circumstances, it is necessary to call the Recv method in a goroutine to receive messages.
+	// 中文：Recv阻塞，直到将消息接收到m中或虚拟连接完成。当虚拟连接成功完成时，它将返回io.EOF.
+	// 在正常情况下，需要在一个goroutine中调用Recv方法接收消息。
 	Recv(ctx context.Context) ([]byte, error)
-	Close()
+
+	//CloseSend closes the send direction of the virtual connection.
+	//After calling, subsequent sending will be terminated.
+	//中文：CloseSend关闭虚拟连接的发送方向。调用后，将终止后续发送。
 	CloseSend() error
 }
 

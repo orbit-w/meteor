@@ -104,7 +104,7 @@ func (mux *Multiplexer) recvLoop() {
 			_ = mux.conn.Close()
 		}
 
-		closeErr := ErrCancel
+		closeErr := io.EOF
 		if err != nil {
 			if !(err == io.EOF || network.IsClosedConnError(err)) {
 				closeErr = err
@@ -162,7 +162,7 @@ func (mux *Multiplexer) handleVirtualConn(conn *VirtualConn) {
 
 		// Close the stream
 		// Simultaneously disconnect the input and output of virtual connections
-		conn.OnClose(ErrCancel)
+		conn.OnClose(io.EOF)
 	}()
 
 	handle := mux.server.handle

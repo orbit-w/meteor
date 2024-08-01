@@ -18,7 +18,6 @@ import (
 */
 
 func Test_MuxSend(t *testing.T) {
-
 	host := "127.0.0.1:6800"
 	Serve(t, host)
 

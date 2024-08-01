@@ -1,9 +1,4 @@
-# Agent Stream
-
-The Agent Stream is a feature that allows you to stream data from the agent to the game logic server in real-time. 
-
-Infrastructure transport introduces rpcx, 
-a high-performance, language-independent, and easy-to-use RPC framework that adopts a bidirectional streaming model.
+# Multiplexer
 
 ## How it works
 
@@ -16,39 +11,56 @@ The agent stream is established when the agent connects to the game logic server
 package main
 
 import (
-	"github.com/orbit-w/meteor/modules/net/agent_stream"
+	"context"
+	"fmt"
+	"github.com/orbit-w/meteor/modules/net/mux"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 )
 
+/*
+	@Author: orbit-w
+	@File: main
+	@2024 8月 周四 17:19
+*/
+
 func main() {
-	server := new(agent_stream.Server)
-	if err := server.Serve("127.0.0.1:8800", StreamHandle); err != nil {
+	host := "127.0.0.1:6800"
+	server := new(mux.Server)
+	recvHandle := func(conn mux.IServerConn) error {
+		for {
+			in, err := conn.Recv(context.Background())
+			if err != nil {
+				log.Println("conn read stream failed: ", err.Error())
+				break
+			}
+			fmt.Println(string(in))
+			err = conn.Send([]byte("hello, client"))
+		}
+		return nil
+	}
+	err := server.Serve(host, recvHandle)
+	if err != nil {
 		panic(err)
 	}
-	defer func() {
-		_ = server.Stop()
-	}()
 
-	stop := make(chan os.Signal, 1)
+	// Create a channel to listen for OS signals
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	// Register the channel to receive SIGINT signals.
-	signal.Notify(stop, syscall.SIGINT)
+	// Block until a signal is received
+	sig := <-sigChan
+	fmt.Printf("Received signal: %s. Shutting down...\n", sig)
 
-	// Wait for a SIGINT signal.
-	// This will block until a signal is received.
-	<-stop
-}
+	// Perform any necessary cleanup here
+	// For example, you might want to gracefully close the server
+	// server.Close() // Uncomment if your server has a Close method
 
-func StreamHandle(stream agent_stream.IStream) error {
-	for {
-		_, err := stream.Recv()
-		if err != nil {
-			break
-		}
-	}
-	return nil
+	// Exit the program
+	os.Exit(0)
+
 }
 
 ```
@@ -57,29 +69,50 @@ func StreamHandle(stream agent_stream.IStream) error {
 
 ```go
 
-package main
+import (
+	"context"
+	"fmt"
+	"github.com/orbit-w/meteor/modules/net/mux"
+	"github.com/orbit-w/meteor/modules/net/transport"
+	"os"
+	"os/signal"
+	"syscall"
+)
 
-import "github.com/orbit-w/meteor/modules/net/agent_stream"
+/*
+	@Author: orbit-w
+	@File: main
+	@2024 8月 周四 17:25
+*/
 
 func main() {
-	cli := agent_stream.NewClient("127.0.0.1:8800")
-	stream, err := cli.Stream()
+	host := "127.0.0.1:6800"
+	conn := transport.DialContextWithOps(context.Background(), host)
+	mux := mux.NewMultiplexer(context.Background(), conn)
+
+	stream, err := mux.NewVirtualConn(context.Background())
 	if err != nil {
 		panic(err)
 	}
 
-	go func() {
-		for {
-			_, err := stream.Recv()
-			if err != nil {
-				panic(err)
-			}
-		}
-	}()
+	err = stream.Send([]byte("hello, server"))
 
-	if err = stream.Send([]byte("hello")); err != nil {
-		panic(err)
-	}
+	err = stream.CloseSend()
+
+	// Create a channel to listen for OS signals
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// Block until a signal is received
+	sig := <-sigChan
+	fmt.Printf("Received signal: %s. Shutting down...\n", sig)
+
+	// Perform any necessary cleanup here
+	// For example, you might want to gracefully close the server
+	// server.Close() // Uncomment if your server has a Close method
+
+	// Exit the program
+	os.Exit(0)
 }
 
 
