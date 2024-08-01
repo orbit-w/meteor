@@ -19,6 +19,11 @@ import (
    @2024 7月 周日 19:12
 */
 
+type IMux interface {
+	NewVirtualConn(ctx context.Context) (IConn, error)
+	Close()
+}
+
 type Multiplexer struct {
 	isClient     bool
 	state        atomic.Uint32
@@ -31,19 +36,26 @@ type Multiplexer struct {
 	server *Server
 }
 
-func NewMultiplexer(f context.Context, conn transport.IConn, client bool) *Multiplexer {
-	ctx, cancel := context.WithCancel(f)
+func NewMultiplexer(f context.Context, conn transport.IConn, isClient bool) IMux {
+	mux := newMultiplexer(f, conn, isClient)
+	go mux.recvLoop()
+	return mux
+}
 
-	return &Multiplexer{
-		isClient:     client,
+func newMultiplexer(f context.Context, conn transport.IConn, isClient bool) *Multiplexer {
+	ctx, cancel := context.WithCancel(f)
+	mux := &Multiplexer{
+		isClient:     isClient,
 		conn:         conn,
 		virtualConns: newConns(),
 		ctx:          ctx,
 		cancel:       cancel,
+		codec:        new(Codec),
 	}
+	return mux
 }
 
-func (mux *Multiplexer) NewVirtualConn(ctx context.Context) (*VirtualConn, error) {
+func (mux *Multiplexer) NewVirtualConn(ctx context.Context) (IConn, error) {
 	id := mux.virtualConns.Id()
 
 	vc := virtualConn(ctx, id, mux.conn, mux)
@@ -78,7 +90,7 @@ func (mux *Multiplexer) Close() {
 	}
 }
 
-func (mux *Multiplexer) loop() {
+func (mux *Multiplexer) recvLoop() {
 	var (
 		in  []byte
 		err error
@@ -122,32 +134,21 @@ func (mux *Multiplexer) loop() {
 }
 
 // loopVirtualConn
-// server side, loop the virtual connection
+// server side, recvLoop the virtual connection
 // 服务端侧，有新的虚拟链接进来，需要循环处理
 // 业务侧只需要break/return即可
-func (mux *Multiplexer) loopVirtualConn(ctx context.Context, conn transport.IConn, id int64) {
+func (mux *Multiplexer) acceptVirtualConn(ctx context.Context, conn transport.IConn, id int64) {
 	vc := virtualConn(ctx, id, conn, mux)
 	defer func() {
 		if _, exist := mux.virtualConns.GetAndDel(id); exist {
 			err := vc.rb.GetErr()
 			if err == nil {
-				_ = vc.sendMsg(&Msg{
-					Id:   id,
-					Type: MessageFin,
-				})
+				vc.sendMsgFin()
 			}
 		}
 
-		err := vc.rb.GetErr()
-		if err == nil {
-			_ = vc.sendMsg(&Msg{
-				Id:   id,
-				Type: MessageFin,
-			})
-		}
-
-		// close the stream
-		// 同时掐断虚拟连接的输入输出
+		// Close the stream
+		// Simultaneously disconnect the input and output of virtual connections
 		vc.OnClose(ErrCancel)
 	}()
 
@@ -169,7 +170,7 @@ func (mux *Multiplexer) handleVirtualConn(conn *VirtualConn) {
 
 func handleDataClientSide(mux *Multiplexer, in *Msg) {
 	switch in.Type {
-	case MessageReplyRaw:
+	case MessageRaw:
 		if len(in.Data) > 0 {
 			v, ok := mux.virtualConns.Get(in.Id)
 			if ok {
@@ -194,13 +195,20 @@ func handleDataServerSide(mux *Multiplexer, in *Msg) {
 
 		md := metadata.MD{}
 		if err := metadata.Unmarshal(in.Data, &md); err != nil {
-			//TODO: 敏感信息解析失败后处理？
+			//remote close the virtual connection
+			pack := mux.codec.Encode(&Msg{
+				Type: MessageFin,
+				Id:   in.Id,
+			})
+			_ = mux.conn.Send(pack.Data())
+			pack.Return()
 			log.Println("[TcpServer] [func:handleStartFrame] metadata unmarshal failed: ", err.Error())
+			return
 		}
 
 		ctx := metadata.NewMetaContext(mux.ctx, md)
 		utils.GoRecoverPanic(func() {
-			mux.loopVirtualConn(ctx, mux.conn, in.Id)
+			mux.acceptVirtualConn(ctx, mux.conn, in.Id)
 		})
 
 	case MessageRaw:

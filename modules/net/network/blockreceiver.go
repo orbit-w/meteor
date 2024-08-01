@@ -1,5 +1,7 @@
 package network
 
+import "context"
+
 type recvMsg struct {
 	in  []byte
 	err error
@@ -19,7 +21,7 @@ func NewBlockReceiver() *BlockReceiver {
 	}
 }
 
-func (r *BlockReceiver) Recv() (in []byte, err error) {
+func (r *BlockReceiver) Recv(ctx context.Context) (in []byte, err error) {
 	select {
 	case msg, ok := <-r.buf.get():
 		if !ok {
@@ -30,6 +32,8 @@ func (r *BlockReceiver) Recv() (in []byte, err error) {
 		}
 		r.buf.load()
 		return msg.in, nil
+	case <-ctx.Done():
+		return nil, ErrCanceled
 	}
 }
 

@@ -27,8 +27,6 @@ const (
 
 const (
 	MessageRaw = iota
-	MessageReplyRaw
-	MessageStreamHeartbeat
 	MessageStart
 	MessageFin
 

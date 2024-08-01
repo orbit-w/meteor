@@ -15,14 +15,14 @@ import (
 
 type IConn interface {
 	Send(data []byte) error
-	Recv() ([]byte, error)
+	Recv(ctx context.Context) ([]byte, error)
 	Close()
 	CloseSend() error
 }
 
 type IServerConn interface {
 	Send(data []byte) error
-	Recv() ([]byte, error)
+	Recv(ctx context.Context) ([]byte, error)
 }
 
 type VirtualConn struct {
@@ -57,8 +57,8 @@ func (vc *VirtualConn) Send(data []byte) error {
 	return vc.send(data, false)
 }
 
-func (vc *VirtualConn) Recv() ([]byte, error) {
-	return vc.rb.Recv()
+func (vc *VirtualConn) Recv(ctx context.Context) ([]byte, error) {
+	return vc.rb.Recv(ctx)
 }
 
 func (vc *VirtualConn) Close() {
@@ -106,6 +106,15 @@ func (vc *VirtualConn) sendMsg(msg *Msg) error {
 	}
 	fp.Return()
 	return nil
+}
+
+// 远程发送关闭信号
+func (vc *VirtualConn) sendMsgFin() {
+	msg := Msg{
+		Type: MessageFin,
+		Id:   vc.Id(),
+	}
+	_ = vc.sendMsg(&msg)
 }
 
 func (vc *VirtualConn) isClient() bool {
