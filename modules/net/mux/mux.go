@@ -36,8 +36,8 @@ type Multiplexer struct {
 	server *Server
 }
 
-func NewMultiplexer(f context.Context, conn transport.IConn, isClient bool) IMux {
-	mux := newMultiplexer(f, conn, isClient, nil)
+func NewMultiplexer(f context.Context, conn transport.IConn) IMux {
+	mux := newMultiplexer(f, conn, true, nil)
 	go mux.recvLoop()
 	return mux
 }

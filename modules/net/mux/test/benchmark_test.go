@@ -2,11 +2,9 @@ package test
 
 import (
 	"context"
-	"fmt"
 	"github.com/orbit-w/meteor/modules/net/mux"
 	"github.com/orbit-w/meteor/modules/net/transport"
 	"github.com/stretchr/testify/assert"
-	"log"
 	"sync"
 	"testing"
 	"time"
@@ -27,7 +25,7 @@ func Benchmark_StreamSend_Test(b *testing.B) {
 	Serve(b, host)
 
 	conn := transport.DialContextWithOps(context.Background(), host)
-	mux := mux.NewMultiplexer(context.Background(), conn, false)
+	mux := mux.NewMultiplexer(context.Background(), conn)
 
 	stream, err := mux.NewVirtualConn(context.Background())
 	assert.NoError(b, err)
@@ -44,22 +42,4 @@ func Benchmark_StreamSend_Test(b *testing.B) {
 	b.StopTimer()
 	time.Sleep(time.Second * 5)
 	//_ = conn.Close()
-}
-
-func Serve(t assert.TestingT, host string) {
-	once.Do(func() {
-		server := new(mux.Server)
-		err := server.Serve(host, func(conn mux.IServerConn) error {
-			for {
-				in, err := conn.Recv(context.Background())
-				if err != nil {
-					log.Println("conn read stream failed: ", err.Error())
-					break
-				}
-				fmt.Println(string(in))
-			}
-			return nil
-		})
-		assert.NoError(t, err)
-	})
 }
