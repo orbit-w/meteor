@@ -24,25 +24,24 @@ import (
 
 // TcpClient implements the IConn interface with TCP.
 type TcpClient struct {
-	mu              sync.Mutex
 	state           atomic.Uint32
 	lastAck         atomic.Int64
 	maxIncomingSize uint32
 	remoteAddr      string
 	remoteNodeId    string
 	currentNodeId   string
+	ctx             context.Context
+	cancel          context.CancelFunc
+	codec           *gnetwork.Codec
+	conn            net.Conn
+	buf             *ControlBuffer
+	sw              *sender_wrapper.SenderWrapper
+	r               *gnetwork.BlockReceiver
+	dHandle         func(remoteNodeId string)
+	writeTimeout    time.Duration
 
-	ctx    context.Context
-	cancel context.CancelFunc
-	codec  *gnetwork.Codec
-
-	conn    net.Conn
-	buf     *ControlBuffer
-	sw      *sender_wrapper.SenderWrapper
-	r       *gnetwork.BlockReceiver
-	dHandle func(remoteNodeId string)
-
-	writeTimeout time.Duration
+	connState int8       //代表链接状态
+	connCond  *sync.Cond //链接状态条件变量
 }
 
 // DialWithOps Encapsulates asynchronous TCP connection establishment (with retries and backoff)
@@ -56,7 +55,6 @@ func DialContextWithOps(ctx context.Context, remoteAddr string, _ops ...*DialOpt
 	buf := new(ControlBuffer)
 	BuildControlBuffer(buf, dp.MaxIncomingPacket)
 	tc := &TcpClient{
-		mu:              sync.Mutex{},
 		remoteAddr:      remoteAddr,
 		remoteNodeId:    dp.RemoteNodeId,
 		currentNodeId:   dp.CurrentNodeId,
@@ -68,6 +66,8 @@ func DialContextWithOps(ctx context.Context, remoteAddr string, _ops ...*DialOpt
 		codec:           gnetwork.NewCodec(dp.MaxIncomingPacket, false, dp.ReadTimeout),
 		r:               gnetwork.NewBlockReceiver(),
 		writeTimeout:    dp.WriteTimeout,
+		connCond:        sync.NewCond(&sync.Mutex{}),
+		connState:       idle,
 	}
 
 	go tc.handleDial(dp)
@@ -95,8 +95,16 @@ func (tc *TcpClient) Recv(ctx context.Context) ([]byte, error) {
 }
 
 func (tc *TcpClient) Close() error {
-	if tc.conn != nil {
-		_ = tc.conn.Close()
+	if tc.state.CompareAndSwap(cliStateNormal, cliStateStopped) {
+		tc.connCond.L.Lock()
+		for !(tc.connState == connected || tc.connState == connectedFailed) {
+			tc.connCond.Wait()
+		}
+		tc.connCond.L.Unlock()
+
+		if tc.conn != nil {
+			_ = tc.conn.Close()
+		}
 	}
 	return nil
 }
@@ -117,15 +125,20 @@ func (tc *TcpClient) handleDial(_ *DialOption) {
 	//the conn state will be set to the 'disconnected' state,
 	//and all virtual streams will be closed.
 	if err := withRetry(task); err != nil {
-		tc.mu.Lock()
-		defer tc.mu.Unlock()
-		tc.state.Store(StatusDisconnected)
 		fmt.Println("retry failed max limit")
+		tc.connCond.L.Lock()
+		tc.connState = connectedFailed
+		tc.connCond.L.Unlock()
+		tc.connCond.Broadcast()
 		tc.r.OnClose(err)
 		return
 	}
 
-	tc.state.Store(StatusConnected)
+	tc.connCond.L.Lock()
+	tc.connState = connected
+	tc.connCond.L.Unlock()
+	tc.connCond.Broadcast()
+
 	tc.lastAck.Store(0)
 	tc.sw = sender_wrapper.NewSender(tc.SendData)
 	tc.buf.Run(tc.sw)
@@ -286,10 +299,6 @@ func (tc *TcpClient) keepalive() {
 
 func (tc *TcpClient) ack() {
 	tc.lastAck.Store(time.Now().Unix())
-}
-
-func (tc *TcpClient) StateCompareAndSwap(old, new uint32) bool {
-	return tc.state.CompareAndSwap(old, new)
 }
 
 func withRetry(handle func() error) error {

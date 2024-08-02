@@ -14,6 +14,16 @@ var (
 	ServeOnce sync.Once
 )
 
+func Test_CloseWithNoBlocking(t *testing.T) {
+	host := "127.0.0.1:6800"
+	ServeTest(t, host)
+	conn := DialWithOps(host, &DialOption{
+		RemoteNodeId:  "node_0",
+		CurrentNodeId: "node_1",
+	})
+	_ = conn.Close()
+}
+
 func Test_Transport(t *testing.T) {
 	host := "127.0.0.1:6800"
 	s := ServeTest(t, host)

@@ -29,14 +29,20 @@ const (
 )
 
 const (
-	StatusConnecting = iota
-	StatusConnected
-	StatusDisconnected
+	idle = iota
+	connected
+	disconnected
+	connectedFailed
 )
 
 const (
 	TypeWorking = 1
 	TypeStopped = 2
+)
+
+const (
+	cliStateNormal = iota
+	cliStateStopped
 )
 
 const (
