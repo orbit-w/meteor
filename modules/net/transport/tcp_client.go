@@ -153,6 +153,8 @@ func (tc *TcpClient) SendData(data packet.IPacket) error {
 		if tc.conn != nil {
 			_ = tc.conn.Close()
 		}
+	} else {
+		log.Println("[TcpClient] [func: SendData] exec success")
 	}
 	return err
 }
