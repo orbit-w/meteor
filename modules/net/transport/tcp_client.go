@@ -149,12 +149,10 @@ func (tc *TcpClient) handleDial(_ *DialOption) {
 func (tc *TcpClient) SendData(data packet.IPacket) error {
 	err := tc.sendData(data)
 	if err != nil {
-		log.Println("[TcpClient] [func: SendData] exec failed: ", err.Error())
+		//log.Println("[TcpClient] [func: SendData] exec failed: ", err.Error())
 		if tc.conn != nil {
 			_ = tc.conn.Close()
 		}
-	} else {
-		log.Println("[TcpClient] [func: SendData] exec success")
 	}
 	return err
 }
