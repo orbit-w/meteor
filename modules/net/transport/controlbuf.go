@@ -124,21 +124,26 @@ func (ins *ControlBuffer) flush() {
 		ins.safeReturn()
 	}()
 
+	var (
+		writer = packet.Writer(2048)
+	)
+
 FLUSH:
 	ins.mu.Lock()
 	for ins.state == TypeWorking && !ins.isEmpty() {
-		w := packet.Writer()
 		size := number_utils.Min[int](BatchLimit, ins.length)
 		for i := 0; i < size; i++ {
 			length, _ := ins.buffer.NextBytesSize32()
-			if uint32(w.Len())+uint32(length)+4 > ins.max {
+			if uint32(writer.Len())+uint32(length)+4 > ins.max {
 				break
 			}
 			ins.length--
 			data, _ := ins.buffer.ReadBytes32()
-			w.WriteBytes32(data)
+			writer.WriteBytes32(data)
 		}
 
+		w := packet.Reader(writer.Data())
+		writer.Reset()
 		_ = ins.sw.Send(w)
 	}
 

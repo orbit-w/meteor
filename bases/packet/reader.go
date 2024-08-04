@@ -12,7 +12,7 @@ import (
 */
 
 func Reader(data []byte) IPacket {
-	packet := getPacket()
+	packet := getPacketWithSize(len(data))
 	packet.buf = append(packet.buf, data...)
 	return packet
 }

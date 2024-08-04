@@ -67,9 +67,8 @@ type IPacket interface {
 */
 
 type BigEndianPacket struct {
-	size int  // initial size of buf
-	off  uint // read at &buf[off], write at &buf[len(buf)]
-	buf  []byte
+	off uint // read at &buf[off], write at &buf[len(buf)]
+	buf []byte
 }
 
 func New() IPacket {
@@ -80,8 +79,7 @@ func New() IPacket {
 
 func NewWithInitialSize(initSize int) IPacket {
 	return &BigEndianPacket{
-		size: initSize,
-		buf:  make([]byte, 0, initSize),
+		buf: make([]byte, 0, initSize),
 	}
 }
 
@@ -90,13 +88,8 @@ func NewWithInitialSize(initSize int) IPacket {
 	useful for reducing memory allocations when handling a large number of packets.
 */
 
-func getPacket() *BigEndianPacket {
-	pack := defPool.Get()
-	return pack
-}
-
 func getPacketWithSize(size int) *BigEndianPacket {
-	pack := defPool.GetWithSize(size)
+	pack := defPool.Get(size)
 	return pack
 }
 

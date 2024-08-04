@@ -13,6 +13,6 @@ import (
 
 func Test_Pool(t *testing.T) {
 	p := NewPool(maxSize)
-	bp := p.GetWithSize(1)
+	bp := p.Get(1)
 	fmt.Println(bp)
 }

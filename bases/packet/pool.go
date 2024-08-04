@@ -21,15 +21,11 @@ var defPool = NewPool(maxSize)
 type PPool struct {
 	maxBufSize int
 	buffers    []sync.Pool
-	pool       sync.Pool
 }
 
 func NewPool(maxSize int) *PPool {
 	p := new(PPool)
 	p.maxBufSize = maxSize
-	p.pool = sync.Pool{New: func() any {
-		return New()
-	}}
 	p.buffers = make([]sync.Pool, 17) // 1B -> 64K
 
 	for k := range p.buffers {
@@ -41,11 +37,7 @@ func NewPool(maxSize int) *PPool {
 	return p
 }
 
-func (p *PPool) Get() *BigEndianPacket {
-	return p.pool.Get().(*BigEndianPacket)
-}
-
-func (p *PPool) GetWithSize(size int) *BigEndianPacket {
+func (p *PPool) Get(size int) *BigEndianPacket {
 	if size <= 0 || size > maxSize {
 		panic(fmt.Sprintf("invalid size %d", size))
 	}
@@ -57,16 +49,12 @@ func (p *PPool) Put(packet *BigEndianPacket) {
 	if packet == nil {
 		return
 	}
+	pCap := packet.Cap()
 
-	if packet.size == 0 {
-		p.pool.Put(packet)
-		return
+	if pCap > maxSize || pCap <= 0 {
+		panic(fmt.Sprintf("invalid size %d", pCap))
 	}
 
-	if packet.size > maxSize || packet.size < 0 {
-		panic(fmt.Sprintf("invalid size %d", packet.size))
-	}
-
-	bits := math.GenericFls(int(packet.size) - 1)
+	bits := math.GenericFls(int(pCap) - 1)
 	p.buffers[bits].Put(packet)
 }
