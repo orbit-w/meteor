@@ -13,15 +13,17 @@ func Writer() IPacket {
 }
 
 func (p *BigEndianPacket) Write(v []byte) {
+	p.size += len(v)
 	p.buf = append(p.buf, v...)
 }
 
 func (p *BigEndianPacket) WriteRowBytesStr(str string) {
 	v := []byte(str)
-	p.buf = append(p.buf, v...)
+	p.Write(v)
 }
 
 func (p *BigEndianPacket) WriteBool(v bool) {
+	p.size += 1
 	if v {
 		p.buf = append(p.buf, byte(1))
 	} else {
@@ -31,17 +33,20 @@ func (p *BigEndianPacket) WriteBool(v bool) {
 
 func (p *BigEndianPacket) WriteBytes(v []byte) {
 	p.WriteUint16(uint16(len(v)))
+	p.size += len(v)
 	p.buf = append(p.buf, v...)
 }
 
 func (p *BigEndianPacket) WriteBytes32(v []byte) {
 	p.WriteUint32(uint32(len(v)))
+	p.size += len(v)
 	p.buf = append(p.buf, v...)
 }
 
 func (p *BigEndianPacket) WriteString(v string) {
 	bytes := []byte(v)
 	p.WriteUint16(uint16(len(bytes)))
+	p.size += len(bytes)
 	p.buf = append(p.buf, bytes...)
 }
 
@@ -62,22 +67,26 @@ func (p *BigEndianPacket) WriteInt64(v int64) {
 }
 
 func (p *BigEndianPacket) WriteUint8(v uint8) {
+	p.size += 1
 	p.buf = append(p.buf, v)
 }
 
 func (p *BigEndianPacket) WriteUint16(v uint16) {
+	p.size += 2
 	buf := make([]byte, 2)
 	binary.BigEndian.PutUint16(buf, v)
 	p.buf = append(p.buf, buf...)
 }
 
 func (p *BigEndianPacket) WriteUint32(v uint32) {
+	p.size += 4
 	buf := make([]byte, 4)
 	binary.BigEndian.PutUint32(buf, v)
 	p.buf = append(p.buf, buf...)
 }
 
 func (p *BigEndianPacket) WriteUint64(v uint64) {
+	p.size += 8
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, v)
 	p.buf = append(p.buf, buf...)

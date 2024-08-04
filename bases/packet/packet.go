@@ -67,8 +67,9 @@ type IPacket interface {
 */
 
 type BigEndianPacket struct {
-	off uint // read at &buf[off], write at &buf[len(buf)]
-	buf []byte
+	size int  // initial size of buf
+	off  uint // read at &buf[off], write at &buf[len(buf)]
+	buf  []byte
 }
 
 func New() IPacket {
@@ -79,7 +80,8 @@ func New() IPacket {
 
 func NewWithInitialSize(initSize int) IPacket {
 	return &BigEndianPacket{
-		buf: make([]byte, 0, initSize),
+		size: initSize,
+		buf:  make([]byte, 0, initSize),
 	}
 }
 
@@ -89,7 +91,12 @@ func NewWithInitialSize(initSize int) IPacket {
 */
 
 func getPacket() *BigEndianPacket {
-	pack := pool.Get().(*BigEndianPacket)
+	pack := defPool.Get()
+	return pack
+}
+
+func getPacketWithSize(size int) *BigEndianPacket {
+	pack := defPool.GetWithSize(size)
 	return pack
 }
 
@@ -157,5 +164,5 @@ func (p *BigEndianPacket) NextBytesSize32() (int, error) {
 
 func (p *BigEndianPacket) Return() {
 	p.Reset()
-	pool.Put(p)
+	defPool.Put(p)
 }
