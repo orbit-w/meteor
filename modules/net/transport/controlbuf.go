@@ -163,9 +163,8 @@ func (ins *ControlBuffer) safeReturn() {
 	defer ins.mu.Unlock()
 	ins.state = TypeStopped
 	ins.sw.OnClose()
-	ins.buffer.Reset()
+	ins.buffer.Free()
 	close(ins.ch)
-	ins.buffer.Return()
 	ins.buffer = nil
 }
 
