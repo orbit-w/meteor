@@ -12,9 +12,9 @@ import (
 */
 
 func Reader(data []byte) IPacket {
-	packet := getPacketWithSize(len(data))
-	packet.buf = append(packet.buf, data...)
-	return packet
+	pack := defPool.Get(len(data))
+	pack.buf = append(pack.buf, data...)
+	return pack
 }
 
 // Read reads the next len(p) bytes from the buffer or until the buffer

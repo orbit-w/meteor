@@ -9,7 +9,8 @@ import "encoding/binary"
 */
 
 func Writer(size int) IPacket {
-	return getPacketWithSize(size)
+	pack := defPool.Get(size)
+	return pack
 }
 
 func (p *BigEndianPacket) Write(v []byte) {

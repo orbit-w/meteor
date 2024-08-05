@@ -57,6 +57,7 @@ type IPacket interface {
 
 	Reset()
 	Return()
+	Free()
 }
 
 /*
@@ -81,16 +82,6 @@ func NewWithInitialSize(initSize int) IPacket {
 	return &BigEndianPacket{
 		buf: make([]byte, 0, initSize),
 	}
-}
-
-/*
-	The getPacket function retrieves a BigEndianPacket from a pool, which can be
-	useful for reducing memory allocations when handling a large number of packets.
-*/
-
-func getPacketWithSize(size int) *BigEndianPacket {
-	pack := defPool.Get(size)
-	return pack
 }
 
 func (p *BigEndianPacket) Remain() []byte {
@@ -157,5 +148,10 @@ func (p *BigEndianPacket) NextBytesSize32() (int, error) {
 
 func (p *BigEndianPacket) Return() {
 	p.Reset()
-	defPool.Put(p)
+	_ = defPool.Put(p)
+}
+
+func (p *BigEndianPacket) Free() {
+	p.off = 0
+	p.buf = nil
 }

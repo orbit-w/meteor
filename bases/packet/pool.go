@@ -1,6 +1,7 @@
 package packet
 
 import (
+	"errors"
 	"fmt"
 	"github.com/orbit-w/meteor/bases/math"
 	"sync"
@@ -13,20 +14,20 @@ import (
 */
 
 const (
-	maxSize = 65536
+	maxSize = 1048576
 )
 
 var defPool = NewPool(maxSize)
 
-type PPool struct {
+type BufPool struct {
 	maxBufSize int
 	buffers    []sync.Pool
 }
 
-func NewPool(maxSize int) *PPool {
-	p := new(PPool)
+func NewPool(maxSize int) *BufPool {
+	p := new(BufPool)
 	p.maxBufSize = maxSize
-	p.buffers = make([]sync.Pool, 17) // 1B -> 64K
+	p.buffers = make([]sync.Pool, 21) // 1M -> 64K
 
 	for k := range p.buffers {
 		size := 1 << uint32(k)
@@ -37,24 +38,25 @@ func NewPool(maxSize int) *PPool {
 	return p
 }
 
-func (p *PPool) Get(size int) *BigEndianPacket {
-	if size <= 0 || size > maxSize {
-		panic(fmt.Sprintf("invalid size %d", size))
+func (p *BufPool) Get(size int) *BigEndianPacket {
+	if size <= 0 || size > p.maxBufSize {
+		return nil
 	}
 	bits := math.GenericFls(size - 1)
 	return p.buffers[bits].Get().(*BigEndianPacket)
 }
 
-func (p *PPool) Put(packet *BigEndianPacket) {
+func (p *BufPool) Put(packet *BigEndianPacket) error {
 	if packet == nil {
-		return
+		return nil
 	}
 	pCap := packet.Cap()
 
-	if pCap > maxSize || pCap <= 0 {
-		panic(fmt.Sprintf("invalid size %d", pCap))
+	if pCap > p.maxBufSize || pCap <= 0 {
+		return errors.New(fmt.Sprintf("invalid size %d", pCap))
 	}
 
-	bits := math.GenericFls(int(pCap) - 1)
+	bits := math.GenericFls(pCap - 1)
 	p.buffers[bits].Put(packet)
+	return nil
 }
