@@ -2,7 +2,7 @@ package transport
 
 import (
 	"encoding/binary"
-	"github.com/orbit-w/meteor/bases/packet"
+	"github.com/orbit-w/meteor/modules/net/packet"
 	"io"
 	"log"
 	"net"
@@ -34,11 +34,11 @@ func NewTcpCodec(max uint32, _isGzip bool) *NetCodec {
 
 // EncodeBody 消息编码协议 body: size<int32> | gzipped<bool> | body<bytes>
 func (codec *NetCodec) EncodeBody(body packet.IPacket) packet.IPacket {
-	defer body.Return()
+	defer packet.Return(body)
 	size := body.Len()
 
 	// body: size<int32> | gzipped<byte> | body<bytes>
-	pack := packet.Writer(4 + 1 + size)
+	pack := packet.WriterP(4 + 1 + size)
 	pack.WriteInt32(int32(size) + gzipSize)
 	pack.WriteBool(false)
 	pack.Write(body.Data())
@@ -70,7 +70,7 @@ func (codec *NetCodec) BlockDecodeBody(conn net.Conn, header, body []byte) (pack
 		return nil, ReadBodyFailed(err)
 	}
 
-	buf := packet.Reader(body)
+	buf := packet.ReaderP(body)
 
 	//TODO:gzip
 	_, err = buf.ReadBool()
@@ -88,7 +88,7 @@ func (codec *NetCodec) checkPacketSize(header []byte) error {
 }
 
 func packHeadByte(data []byte, mt int8) packet.IPacket {
-	writer := packet.Writer(1 + len(data))
+	writer := packet.WriterP(1 + len(data))
 	writer.WriteInt8(mt)
 	if data != nil && len(data) > 0 {
 		writer.Write(data)
@@ -98,7 +98,7 @@ func packHeadByte(data []byte, mt int8) packet.IPacket {
 
 func packHeadByteP(pack packet.IPacket, mt int8) packet.IPacket {
 	data := pack.Remain()
-	writer := packet.Writer(1 + len(data))
+	writer := packet.WriterP(1 + len(data))
 	writer.WriteInt8(mt)
 	if pack != nil {
 		if len(data) > 0 {
@@ -109,7 +109,7 @@ func packHeadByteP(pack packet.IPacket, mt int8) packet.IPacket {
 }
 
 func unpackHeadByte(pack packet.IPacket, handle func(h int8, data []byte)) error {
-	defer pack.Return()
+	defer packet.Return(pack)
 	head, err := pack.ReadInt8()
 	if err != nil {
 		return err

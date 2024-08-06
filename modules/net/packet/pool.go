@@ -14,7 +14,7 @@ import (
 */
 
 const (
-	maxSize = 1048576
+	maxSize = 65536
 )
 
 var defPool = NewPool(maxSize)
@@ -27,7 +27,7 @@ type BufPool struct {
 func NewPool(maxSize int) *BufPool {
 	p := new(BufPool)
 	p.maxBufSize = maxSize
-	p.buffers = make([]sync.Pool, 21) // 1M -> 64K
+	p.buffers = make([]sync.Pool, 17)
 
 	for k := range p.buffers {
 		size := 1 << uint32(k)

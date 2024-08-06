@@ -11,12 +11,6 @@ import (
    @2023 11月 周日 15:05
 */
 
-func Reader(data []byte) IPacket {
-	pack := defPool.Get(len(data))
-	pack.buf = append(pack.buf, data...)
-	return pack
-}
-
 // Read reads the next len(p) bytes from the buffer or until the buffer
 // is drained. The return value n is the number of bytes read. If the
 // buffer has no data to return, err is io.EOF (unless len(p) is zero);

@@ -1,17 +1,14 @@
 package packet
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+)
 
 /*
    @Author: orbit-w
    @File: writer
    @2023 11月 周日 17:03
 */
-
-func Writer(size int) IPacket {
-	pack := defPool.Get(size)
-	return pack
-}
 
 func (p *BigEndianPacket) Write(v []byte) {
 	p.buf = append(p.buf, v...)

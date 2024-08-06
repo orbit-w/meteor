@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"sync"
@@ -16,7 +17,7 @@ var (
 
 func Test_CloseWithNoBlocking(t *testing.T) {
 	host := "127.0.0.1:6800"
-	ServeTest(t, host)
+	ServeTest(t, host, true)
 	conn := DialWithOps(host, &DialOption{
 		RemoteNodeId:  "node_0",
 		CurrentNodeId: "node_1",
@@ -26,7 +27,7 @@ func Test_CloseWithNoBlocking(t *testing.T) {
 
 func Test_Transport(t *testing.T) {
 	host := "127.0.0.1:6800"
-	s := ServeTest(t, host)
+	s := ServeTest(t, host, true)
 	ctx := context.Background()
 
 	conn := DialWithOps(host, &DialOption{
@@ -48,18 +49,18 @@ func Test_Transport(t *testing.T) {
 				}
 				break
 			}
-			log.Println("recv response: ", in[0])
+			log.Println("recv response: ", string(in))
 		}
 	}()
 
-	w := []byte{1}
+	w := []byte("hello, world")
 	_ = conn.Send(w)
 
 	time.Sleep(time.Second * 10)
 	_ = s.Stop()
 }
 
-func ServeTest(t TestingT, host string) IServer {
+func ServeTest(t TestingT, host string, print bool) IServer {
 	var (
 		server IServer
 		err    error
@@ -81,7 +82,9 @@ func ServeTest(t TestingT, host string) IServer {
 					log.Println("conn read mux failed: ", err.Error())
 					break
 				}
-				//log.Println("receive message from client: ", in.Data()[0])
+				if print {
+					fmt.Println("receive message from client: ", string(in))
+				}
 				if err = conn.Send(in); err != nil {
 					log.Println("server response failed: ", err.Error())
 				}

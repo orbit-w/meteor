@@ -2,7 +2,7 @@ package network
 
 import (
 	"encoding/binary"
-	"github.com/orbit-w/meteor/bases/packet"
+	"github.com/orbit-w/meteor/modules/net/packet"
 	"io"
 	"log"
 	"net"
@@ -41,10 +41,10 @@ func NewCodec(max uint32, _isGzip bool, _readTimeout time.Duration) *Codec {
 
 // EncodeBody 消息编码协议 body: size<int32> | gzipped<bool> | body<bytes>
 func (c *Codec) EncodeBody(body packet.IPacket) (packet.IPacket, error) {
-	defer body.Return()
+	defer packet.Return(body)
 	var buf packet.IPacket
 	writer := func(data []byte) {
-		buf = packet.Writer(4 + 1 + len(data))
+		buf = packet.WriterP(4 + 1 + len(data))
 		buf.WriteInt32(int32(len(data)) + gzipSize)
 		buf.WriteBool(c.isGzip)
 		buf.Write(data)
@@ -67,7 +67,7 @@ func (c *Codec) EncodeBody(body packet.IPacket) (packet.IPacket, error) {
 func (c *Codec) EncodeBodyRaw(body []byte) (packet.IPacket, error) {
 	var buf packet.IPacket
 	writer := func(data []byte) {
-		buf = packet.Writer(4 + 1 + len(data))
+		buf = packet.WriterP(4 + 1 + len(data))
 		buf.WriteInt32(int32(len(data)) + gzipSize)
 		buf.WriteBool(c.isGzip)
 		buf.Write(data)
@@ -111,7 +111,7 @@ func (c *Codec) BlockDecodeBody(conn net.Conn, header, body []byte) (packet.IPac
 		return nil, ReadBodyFailed(err)
 	}
 
-	buf := packet.Reader(body)
+	buf := packet.ReaderP(body)
 	return c.decodeBody(buf)
 }
 

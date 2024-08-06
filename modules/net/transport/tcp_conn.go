@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/orbit-w/meteor/bases/misc/utils"
-	"github.com/orbit-w/meteor/bases/packet"
 	network2 "github.com/orbit-w/meteor/modules/net/network"
+	"github.com/orbit-w/meteor/modules/net/packet"
 	"github.com/orbit-w/meteor/modules/wrappers/sender_wrapper"
 	"io"
 	"log"
@@ -57,7 +57,7 @@ func NewTcpServerConn(ctx context.Context, _conn net.Conn, maxIncomingPacket uin
 func (ts *TcpServerConn) Send(data []byte) (err error) {
 	pack := packHeadByte(data, TypeMessageRaw)
 	err = ts.buf.Set(pack)
-	pack.Return()
+	packet.Return(pack)
 	return
 }
 
@@ -66,7 +66,7 @@ func (ts *TcpServerConn) Send(data []byte) (err error) {
 func (ts *TcpServerConn) SendPack(out packet.IPacket) (err error) {
 	pack := packHeadByteP(out, TypeMessageRaw)
 	err = ts.buf.Set(pack)
-	pack.Return()
+	packet.Return(pack)
 	return
 }
 
@@ -85,7 +85,7 @@ func (ts *TcpServerConn) SendData(body packet.IPacket) error {
 	if err != nil {
 		return err
 	}
-	defer pack.Return()
+	defer packet.Return(pack)
 	if err = ts.conn.SetWriteDeadline(time.Now().Add(ts.writeTimeout)); err != nil {
 		return err
 	}
@@ -131,10 +131,10 @@ func (ts *TcpServerConn) HandleLoop(header, body []byte) {
 }
 
 func (ts *TcpServerConn) OnData(data packet.IPacket) error {
-	defer data.Return()
+	defer packet.Return(data)
 	for len(data.Remain()) > 0 {
 		if bytes, err := data.ReadBytes32(); err == nil {
-			reader := packet.Reader(bytes)
+			reader := packet.ReaderP(bytes)
 			_ = ts.HandleData(reader)
 		}
 	}
@@ -147,7 +147,7 @@ func (ts *TcpServerConn) HandleData(in packet.IPacket) error {
 		case TypeMessageHeartbeat:
 			ack := packHeadByte(nil, TypeMessageHeartbeatAck)
 			_ = ts.buf.Set(ack)
-			ack.Return()
+			packet.Return(ack)
 		case TypeMessageHeartbeatAck:
 		default:
 			ts.r.Put(data, nil)

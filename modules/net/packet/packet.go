@@ -1,6 +1,8 @@
 package packet
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+)
 
 /*
    @Author: orbit-w
@@ -56,7 +58,6 @@ type IPacket interface {
 	NextBytesSize32() (int, error)
 
 	Reset()
-	Return()
 	Free()
 }
 
@@ -70,18 +71,6 @@ type IPacket interface {
 type BigEndianPacket struct {
 	off uint // read at &buf[off], write at &buf[len(buf)]
 	buf []byte
-}
-
-func New() IPacket {
-	return &BigEndianPacket{
-		buf: make([]byte, 0),
-	}
-}
-
-func NewWithInitialSize(initSize int) IPacket {
-	return &BigEndianPacket{
-		buf: make([]byte, 0, initSize),
-	}
 }
 
 func (p *BigEndianPacket) Remain() []byte {
@@ -144,11 +133,6 @@ func (p *BigEndianPacket) NextBytesSize32() (int, error) {
 	}
 	buf := p.buf[p.off : p.off+4]
 	return int(binary.BigEndian.Uint32(buf)), nil
-}
-
-func (p *BigEndianPacket) Return() {
-	p.Reset()
-	_ = defPool.Put(p)
 }
 
 func (p *BigEndianPacket) Free() {

@@ -2,8 +2,8 @@ package transport
 
 import (
 	"context"
-	"github.com/orbit-w/meteor/bases/packet"
 	"github.com/orbit-w/meteor/modules/net/network"
+	"github.com/orbit-w/meteor/modules/net/packet"
 	"time"
 )
 

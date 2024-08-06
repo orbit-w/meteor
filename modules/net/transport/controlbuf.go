@@ -2,7 +2,7 @@ package transport
 
 import (
 	"github.com/orbit-w/meteor/bases/misc/number_utils"
-	"github.com/orbit-w/meteor/bases/packet"
+	"github.com/orbit-w/meteor/modules/net/packet"
 	"github.com/orbit-w/meteor/modules/wrappers/sender_wrapper"
 	"sync"
 )
@@ -125,7 +125,7 @@ func (ins *ControlBuffer) flush() {
 	}()
 
 	var (
-		writer = packet.Writer(2048)
+		writer = packet.WriterP(2048)
 	)
 
 FLUSH:
@@ -142,7 +142,7 @@ FLUSH:
 			writer.WriteBytes32(data)
 		}
 
-		w := packet.Reader(writer.Data())
+		w := packet.ReaderP(writer.Data())
 		writer.Reset()
 		_ = ins.sw.Send(w)
 	}

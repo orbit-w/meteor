@@ -14,7 +14,7 @@ const (
 )
 
 const (
-	MaxIncomingPacket = 1048576
+	MaxIncomingPacket = 65536
 	HeadLen           = 4 //包头字节数
 
 	ReadTimeout  = time.Second * 60

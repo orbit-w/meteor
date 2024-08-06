@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/orbit-w/meteor/bases/misc/number_utils"
 	"github.com/orbit-w/meteor/bases/misc/utils"
-	"github.com/orbit-w/meteor/bases/packet"
 	gnetwork "github.com/orbit-w/meteor/modules/net/network"
+	"github.com/orbit-w/meteor/modules/net/packet"
 	"github.com/orbit-w/meteor/modules/wrappers/sender_wrapper"
 	"io"
 	"log"
@@ -76,7 +76,7 @@ func DialContextWithOps(ctx context.Context, remoteAddr string, _ops ...*DialOpt
 
 func (tc *TcpClient) Send(out []byte) error {
 	pack := packHeadByte(out, TypeMessageRaw)
-	defer pack.Return()
+	defer packet.Return(pack)
 	err := tc.buf.Set(pack)
 	return err
 }
@@ -85,7 +85,7 @@ func (tc *TcpClient) Send(out []byte) error {
 // packet to the pool, and the user needs to explicitly call it.
 func (tc *TcpClient) SendPack(out packet.IPacket) error {
 	pack := packHeadByteP(out, TypeMessageRaw)
-	defer pack.Return()
+	defer packet.Return(pack)
 	err := tc.buf.Set(pack)
 	return err
 }
@@ -163,11 +163,11 @@ func (tc *TcpClient) sendData(data packet.IPacket) error {
 		return err
 	}
 	if err = tc.conn.SetWriteDeadline(time.Now().Add(tc.writeTimeout)); err != nil {
-		body.Return()
+		packet.Return(body)
 		return err
 	}
 	_, err = tc.conn.Write(body.Data())
-	body.Return()
+	packet.Return(body)
 	return err
 }
 
@@ -229,7 +229,7 @@ func (tc *TcpClient) reader() {
 			if err != nil {
 				break
 			}
-			reader := packet.Reader(bytes)
+			reader := packet.ReaderP(bytes)
 			_ = tc.decodeRspAndDispatch(reader)
 		}
 	}
@@ -260,7 +260,7 @@ func (tc *TcpClient) decodeRspAndDispatch(body packet.IPacket) error {
 func (tc *TcpClient) keepalive() {
 	ticker := time.NewTicker(time.Second)
 	ping := packHeadByte(nil, TypeMessageHeartbeat)
-	defer ping.Return()
+	defer packet.Return(ping)
 
 	prev := time.Now().Unix()
 	timeout := time.Duration(0)

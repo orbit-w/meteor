@@ -3,7 +3,7 @@ package network
 import (
 	"bytes"
 	"compress/gzip"
-	"github.com/orbit-w/meteor/bases/packet"
+	"github.com/orbit-w/meteor/modules/net/packet"
 	"io"
 	"sync"
 )
@@ -53,7 +53,7 @@ func DecodeGzip(buf packet.IPacket) (packet.IPacket, error) {
 	}
 	defer func() {
 		_ = reader.Close()
-		buf.Return()
+		packet.Return(buf)
 	}()
 
 	// Read all the decompressed data
@@ -62,6 +62,7 @@ func DecodeGzip(buf packet.IPacket) (packet.IPacket, error) {
 		return nil, err
 	}
 
-	r := packet.Reader(decompressedData)
+	// TODO: 解压缩后消息包体大小不可控，目前packet.ReaderP()最大支持65536字节!!
+	r := packet.ReaderP(decompressedData)
 	return r, nil
 }
