@@ -2,7 +2,7 @@ package transport
 
 import (
 	"github.com/orbit-w/meteor/bases/misc/number_utils"
-	"github.com/orbit-w/meteor/modules/net/packet"
+	packet2 "github.com/orbit-w/meteor/bases/net/packet"
 	"github.com/orbit-w/meteor/modules/wrappers/sender_wrapper"
 	"sync"
 )
@@ -18,7 +18,7 @@ type ControlBuffer struct {
 	state           int8
 	max             uint32
 	length          int
-	buffer          packet.IPacket
+	buffer          packet2.IPacket
 	mu              sync.Mutex
 	sw              *sender_wrapper.SenderWrapper
 
@@ -31,7 +31,7 @@ func NewControlBuffer(max uint32, _sw *sender_wrapper.SenderWrapper) *ControlBuf
 		state:           TypeWorking,
 		consumerWaiting: false,
 		max:             max,
-		buffer:          packet.New(),
+		buffer:          packet2.New(),
 		mu:              sync.Mutex{},
 		ch:              make(chan struct{}, 1),
 		close:           make(chan struct{}, 1),
@@ -45,7 +45,7 @@ func NewControlBuffer(max uint32, _sw *sender_wrapper.SenderWrapper) *ControlBuf
 func BuildControlBuffer(buf *ControlBuffer, max uint32) {
 	buf.max = max
 	buf.ch = make(chan struct{}, 1)
-	buf.buffer = packet.New()
+	buf.buffer = packet2.New()
 	buf.mu = sync.Mutex{}
 }
 
@@ -81,7 +81,7 @@ func (ins *ControlBuffer) Kick() {
 	}
 }
 
-func (ins *ControlBuffer) Set(buf packet.IPacket) error {
+func (ins *ControlBuffer) Set(buf packet2.IPacket) error {
 	ins.mu.Lock()
 	if ins.state == TypeStopped {
 		ins.mu.Unlock()
@@ -125,7 +125,7 @@ func (ins *ControlBuffer) flush() {
 	}()
 
 	var (
-		writer = packet.WriterP(2048)
+		writer = packet2.WriterP(2048)
 	)
 
 FLUSH:
@@ -142,7 +142,7 @@ FLUSH:
 			writer.WriteBytes32(data)
 		}
 
-		w := packet.ReaderP(writer.Data())
+		w := packet2.ReaderP(writer.Data())
 		writer.Reset()
 		_ = ins.sw.Send(w)
 	}

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/orbit-w/meteor/bases/misc/utils"
+	packet2 "github.com/orbit-w/meteor/bases/net/packet"
 	network2 "github.com/orbit-w/meteor/modules/net/network"
-	"github.com/orbit-w/meteor/modules/net/packet"
 	"github.com/orbit-w/meteor/modules/wrappers/sender_wrapper"
 	"io"
 	"log"
@@ -57,16 +57,16 @@ func NewTcpServerConn(ctx context.Context, _conn net.Conn, maxIncomingPacket uin
 func (ts *TcpServerConn) Send(data []byte) (err error) {
 	pack := packHeadByte(data, TypeMessageRaw)
 	err = ts.buf.Set(pack)
-	packet.Return(pack)
+	packet2.Return(pack)
 	return
 }
 
 // SendPack TcpServerConn obj does not implicitly call IPacket.Return to return the
 // packet to the pool, and the user needs to explicitly call it.
-func (ts *TcpServerConn) SendPack(out packet.IPacket) (err error) {
+func (ts *TcpServerConn) SendPack(out packet2.IPacket) (err error) {
 	pack := packHeadByteP(out, TypeMessageRaw)
 	err = ts.buf.Set(pack)
-	packet.Return(pack)
+	packet2.Return(pack)
 	return
 }
 
@@ -80,12 +80,12 @@ func (ts *TcpServerConn) Close() error {
 
 // SendData implicitly call body.Return
 // coding: size<int32> | gzipped<bool> | body<bytes>
-func (ts *TcpServerConn) SendData(body packet.IPacket) error {
+func (ts *TcpServerConn) SendData(body packet2.IPacket) error {
 	pack, err := ts.codec.EncodeBody(body)
 	if err != nil {
 		return err
 	}
-	defer packet.Return(pack)
+	defer packet2.Return(pack)
 	if err = ts.conn.SetWriteDeadline(time.Now().Add(ts.writeTimeout)); err != nil {
 		return err
 	}
@@ -96,7 +96,7 @@ func (ts *TcpServerConn) SendData(body packet.IPacket) error {
 func (ts *TcpServerConn) HandleLoop(header, body []byte) {
 	var (
 		err  error
-		data packet.IPacket
+		data packet2.IPacket
 	)
 
 	defer utils.RecoverPanic()
@@ -130,24 +130,24 @@ func (ts *TcpServerConn) HandleLoop(header, body []byte) {
 	}
 }
 
-func (ts *TcpServerConn) OnData(data packet.IPacket) error {
-	defer packet.Return(data)
+func (ts *TcpServerConn) OnData(data packet2.IPacket) error {
+	defer packet2.Return(data)
 	for len(data.Remain()) > 0 {
 		if bytes, err := data.ReadBytes32(); err == nil {
-			reader := packet.ReaderP(bytes)
+			reader := packet2.ReaderP(bytes)
 			_ = ts.HandleData(reader)
 		}
 	}
 	return nil
 }
 
-func (ts *TcpServerConn) HandleData(in packet.IPacket) error {
+func (ts *TcpServerConn) HandleData(in packet2.IPacket) error {
 	err := unpackHeadByte(in, func(head int8, data []byte) {
 		switch head {
 		case TypeMessageHeartbeat:
 			ack := packHeadByte(nil, TypeMessageHeartbeatAck)
 			_ = ts.buf.Set(ack)
-			packet.Return(ack)
+			packet2.Return(ack)
 		case TypeMessageHeartbeatAck:
 		default:
 			ts.r.Put(data, nil)

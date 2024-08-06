@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/orbit-w/meteor/bases/misc/number_utils"
 	"github.com/orbit-w/meteor/bases/misc/utils"
+	packet2 "github.com/orbit-w/meteor/bases/net/packet"
 	gnetwork "github.com/orbit-w/meteor/modules/net/network"
-	"github.com/orbit-w/meteor/modules/net/packet"
 	"github.com/orbit-w/meteor/modules/wrappers/sender_wrapper"
 	"io"
 	"log"
@@ -76,16 +76,16 @@ func DialContextWithOps(ctx context.Context, remoteAddr string, _ops ...*DialOpt
 
 func (tc *TcpClient) Send(out []byte) error {
 	pack := packHeadByte(out, TypeMessageRaw)
-	defer packet.Return(pack)
+	defer packet2.Return(pack)
 	err := tc.buf.Set(pack)
 	return err
 }
 
 // SendPack TcpClient obj does not implicitly call IPacket.Return to return the
 // packet to the pool, and the user needs to explicitly call it.
-func (tc *TcpClient) SendPack(out packet.IPacket) error {
+func (tc *TcpClient) SendPack(out packet2.IPacket) error {
 	pack := packHeadByteP(out, TypeMessageRaw)
-	defer packet.Return(pack)
+	defer packet2.Return(pack)
 	err := tc.buf.Set(pack)
 	return err
 }
@@ -146,7 +146,7 @@ func (tc *TcpClient) handleDial(_ *DialOption) {
 	<-tc.ctx.Done()
 }
 
-func (tc *TcpClient) SendData(data packet.IPacket) error {
+func (tc *TcpClient) SendData(data packet2.IPacket) error {
 	err := tc.sendData(data)
 	if err != nil {
 		//log.Println("[TcpClient] [func: SendData] exec failed: ", err.Error())
@@ -157,17 +157,17 @@ func (tc *TcpClient) SendData(data packet.IPacket) error {
 	return err
 }
 
-func (tc *TcpClient) sendData(data packet.IPacket) error {
+func (tc *TcpClient) sendData(data packet2.IPacket) error {
 	body, err := tc.codec.EncodeBody(data)
 	if err != nil {
 		return err
 	}
 	if err = tc.conn.SetWriteDeadline(time.Now().Add(tc.writeTimeout)); err != nil {
-		packet.Return(body)
+		packet2.Return(body)
 		return err
 	}
 	_, err = tc.conn.Write(body.Data())
-	packet.Return(body)
+	packet2.Return(body)
 	return err
 }
 
@@ -189,7 +189,7 @@ func (tc *TcpClient) reader() {
 
 	var (
 		err   error
-		in    packet.IPacket
+		in    packet2.IPacket
 		bytes []byte
 	)
 
@@ -229,13 +229,13 @@ func (tc *TcpClient) reader() {
 			if err != nil {
 				break
 			}
-			reader := packet.ReaderP(bytes)
+			reader := packet2.ReaderP(bytes)
 			_ = tc.decodeRspAndDispatch(reader)
 		}
 	}
 }
 
-func (tc *TcpClient) recv(header []byte, body []byte) (packet.IPacket, error) {
+func (tc *TcpClient) recv(header []byte, body []byte) (packet2.IPacket, error) {
 	in, err := tc.codec.BlockDecodeBody(tc.conn, header, body)
 	if err != nil {
 		return nil, err
@@ -243,7 +243,7 @@ func (tc *TcpClient) recv(header []byte, body []byte) (packet.IPacket, error) {
 	return in, err
 }
 
-func (tc *TcpClient) decodeRspAndDispatch(body packet.IPacket) error {
+func (tc *TcpClient) decodeRspAndDispatch(body packet2.IPacket) error {
 	err := unpackHeadByte(body, func(head int8, data []byte) {
 		switch head {
 		case TypeMessageHeartbeat, TypeMessageHeartbeatAck:
@@ -260,7 +260,7 @@ func (tc *TcpClient) decodeRspAndDispatch(body packet.IPacket) error {
 func (tc *TcpClient) keepalive() {
 	ticker := time.NewTicker(time.Second)
 	ping := packHeadByte(nil, TypeMessageHeartbeat)
-	defer packet.Return(ping)
+	defer packet2.Return(ping)
 
 	prev := time.Now().Unix()
 	timeout := time.Duration(0)

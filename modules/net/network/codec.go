@@ -2,7 +2,7 @@ package network
 
 import (
 	"encoding/binary"
-	"github.com/orbit-w/meteor/modules/net/packet"
+	packet2 "github.com/orbit-w/meteor/bases/net/packet"
 	"io"
 	"log"
 	"net"
@@ -40,11 +40,11 @@ func NewCodec(max uint32, _isGzip bool, _readTimeout time.Duration) *Codec {
 }
 
 // EncodeBody 消息编码协议 body: size<int32> | gzipped<bool> | body<bytes>
-func (c *Codec) EncodeBody(body packet.IPacket) (packet.IPacket, error) {
-	defer packet.Return(body)
-	var buf packet.IPacket
+func (c *Codec) EncodeBody(body packet2.IPacket) (packet2.IPacket, error) {
+	defer packet2.Return(body)
+	var buf packet2.IPacket
 	writer := func(data []byte) {
-		buf = packet.WriterP(4 + 1 + len(data))
+		buf = packet2.WriterP(4 + 1 + len(data))
 		buf.WriteInt32(int32(len(data)) + gzipSize)
 		buf.WriteBool(c.isGzip)
 		buf.Write(data)
@@ -64,10 +64,10 @@ func (c *Codec) EncodeBody(body packet.IPacket) (packet.IPacket, error) {
 	return buf, nil
 }
 
-func (c *Codec) EncodeBodyRaw(body []byte) (packet.IPacket, error) {
-	var buf packet.IPacket
+func (c *Codec) EncodeBodyRaw(body []byte) (packet2.IPacket, error) {
+	var buf packet2.IPacket
 	writer := func(data []byte) {
-		buf = packet.WriterP(4 + 1 + len(data))
+		buf = packet2.WriterP(4 + 1 + len(data))
 		buf.WriteInt32(int32(len(data)) + gzipSize)
 		buf.WriteBool(c.isGzip)
 		buf.Write(data)
@@ -87,7 +87,7 @@ func (c *Codec) EncodeBodyRaw(body []byte) (packet.IPacket, error) {
 	return buf, nil
 }
 
-func (c *Codec) BlockDecodeBody(conn net.Conn, header, body []byte) (packet.IPacket, error) {
+func (c *Codec) BlockDecodeBody(conn net.Conn, header, body []byte) (packet2.IPacket, error) {
 	err := conn.SetReadDeadline(time.Now().Add(c.readTimeout))
 	if err != nil {
 		return nil, err
@@ -111,11 +111,11 @@ func (c *Codec) BlockDecodeBody(conn net.Conn, header, body []byte) (packet.IPac
 		return nil, ReadBodyFailed(err)
 	}
 
-	buf := packet.ReaderP(body)
+	buf := packet2.ReaderP(body)
 	return c.decodeBody(buf)
 }
 
-func (c *Codec) decodeBody(buf packet.IPacket) (packet.IPacket, error) {
+func (c *Codec) decodeBody(buf packet2.IPacket) (packet2.IPacket, error) {
 	gzipped, err := buf.ReadBool()
 	if err != nil {
 		return nil, err
@@ -128,7 +128,7 @@ func (c *Codec) decodeBody(buf packet.IPacket) (packet.IPacket, error) {
 }
 
 // body: size<int32> | gzipped<byte> | body<bytes>
-func (c *Codec) encodeBody(buf, body packet.IPacket, gzipped bool) {
+func (c *Codec) encodeBody(buf, body packet2.IPacket, gzipped bool) {
 	size := body.Len()
 	buf.WriteInt32(int32(size) + gzipSize)
 	buf.WriteBool(gzipped)
