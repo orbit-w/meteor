@@ -60,6 +60,12 @@ func Test_Transport(t *testing.T) {
 	_ = s.Stop()
 }
 
+func Test_parseConfig(t *testing.T) {
+	var conf *Config
+	parseConfig(&conf)
+	fmt.Println(conf.MaxIncomingPacket)
+}
+
 func ServeTest(t TestingT, host string, print bool) IServer {
 	var (
 		server IServer

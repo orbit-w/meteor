@@ -1,7 +1,7 @@
 package transport
 
 import (
-	network2 "github.com/orbit-w/meteor/modules/net/network"
+	net "github.com/orbit-w/meteor/modules/net/network"
 	"time"
 )
 
@@ -23,7 +23,13 @@ type IServer interface {
 func Serve(pStr, host string,
 	_handle func(conn IConn)) (IServer, error) {
 	config := DefaultServerConfig()
-	op := config.ToAcceptorOptions()
+	return ServeByConfig(pStr, host, _handle, config)
+}
+
+func ServeByConfig(pStr, host string,
+	_handle func(conn IConn), conf *Config) (IServer, error) {
+	parseConfig(&conf)
+	op := conf.ToAcceptorOptions()
 	protocol := parseProtocol(pStr)
 	factory := GetFactory(protocol)
 	server := factory()
@@ -41,8 +47,8 @@ type Config struct {
 	WriteTimeout      time.Duration
 }
 
-func (c Config) ToAcceptorOptions() network2.AcceptorOptions {
-	return network2.AcceptorOptions{
+func (c *Config) ToAcceptorOptions() net.AcceptorOptions {
+	return net.AcceptorOptions{
 		MaxIncomingPacket: c.MaxIncomingPacket,
 		IsGzip:            c.IsGzip,
 		ReadTimeout:       c.ReadTimeout,
@@ -50,24 +56,42 @@ func (c Config) ToAcceptorOptions() network2.AcceptorOptions {
 	}
 }
 
-func DefaultServerConfig() Config {
-	return Config{
-		MaxIncomingPacket: network2.MaxIncomingPacket,
+func DefaultServerConfig() *Config {
+	return &Config{
+		MaxIncomingPacket: net.MaxIncomingPacket,
 		IsGzip:            false,
 		ReadTimeout:       ReadTimeout,
 		WriteTimeout:      WriteTimeout,
 	}
 }
 
-func parseProtocol(p string) network2.Protocol {
+func parseConfig(conf **Config) {
+	if *conf == nil {
+		*conf = DefaultServerConfig()
+	}
+
+	if (*conf).ReadTimeout <= 0 {
+		(*conf).ReadTimeout = ReadTimeout
+	}
+
+	if (*conf).WriteTimeout <= 0 {
+		(*conf).WriteTimeout = WriteTimeout
+	}
+
+	if (*conf).MaxIncomingPacket <= 0 {
+		(*conf).MaxIncomingPacket = net.MaxIncomingPacket
+	}
+}
+
+func parseProtocol(p string) net.Protocol {
 	switch p {
 	case "tcp":
-		return network2.TCP
+		return net.TCP
 	case "udp":
-		return network2.UDP
+		return net.UDP
 	case "kcp":
-		return network2.KCP
+		return net.KCP
 	default:
-		return network2.TCP
+		return net.TCP
 	}
 }
