@@ -203,7 +203,6 @@ func (tc *TcpClient) reader() {
 			if err == io.EOF || IsClosedConnError(err) {
 				tc.r.OnClose(ErrCanceled)
 			} else {
-				log.Println(fmt.Errorf("tcp %s disconnected: %s", tc.remoteAddr, err.Error()))
 				tc.r.OnClose(err)
 			}
 		} else {

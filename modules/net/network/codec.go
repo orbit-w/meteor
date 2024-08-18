@@ -95,9 +95,6 @@ func (c *Codec) BlockDecodeBody(conn net.Conn, header, body []byte) (packet2.IPa
 
 	_, err = io.ReadFull(conn, header)
 	if err != nil {
-		if err != io.EOF && !IsClosedConnError(err) {
-			log.Println("[Codec] [func:BlockDecodeBody] receive data head failed: ", err.Error())
-		}
 		return nil, err
 	}
 

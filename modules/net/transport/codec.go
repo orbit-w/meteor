@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	packet2 "github.com/orbit-w/meteor/bases/net/packet"
 	"io"
-	"log"
 	"net"
 	"time"
 )
@@ -54,9 +53,6 @@ func (codec *NetCodec) BlockDecodeBody(conn net.Conn, header, body []byte) (pack
 
 	_, err = io.ReadFull(conn, header)
 	if err != nil {
-		if err != io.EOF && !IsClosedConnError(err) {
-			log.Println("[NetCodec] [func:BlockDecodeBody] receive data head failed: ", err.Error())
-		}
 		return nil, err
 	}
 

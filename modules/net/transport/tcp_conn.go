@@ -2,13 +2,11 @@ package transport
 
 import (
 	"context"
-	"fmt"
 	"github.com/orbit-w/meteor/bases/misc/utils"
 	packet2 "github.com/orbit-w/meteor/bases/net/packet"
 	network2 "github.com/orbit-w/meteor/modules/net/network"
 	"github.com/orbit-w/meteor/modules/wrappers/sender_wrapper"
 	"io"
-	"log"
 	"net"
 	"time"
 )
@@ -105,7 +103,6 @@ func (ts *TcpServerConn) HandleLoop(header, body []byte) {
 			if err == io.EOF || IsClosedConnError(err) {
 				ts.r.OnClose(ErrCanceled)
 			} else {
-				log.Println(fmt.Errorf("[TcpServerConn] tcp_conn disconnected: %s", err.Error()))
 				ts.r.OnClose(err)
 			}
 		} else {
