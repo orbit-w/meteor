@@ -22,3 +22,10 @@ func Test_Pool(t *testing.T) {
 	fmt.Println(1 << 20)
 	fmt.Println(1048576 / 65536)
 }
+
+func Test_GenericFls(t *testing.T) {
+	n := 65536
+	m := math.PowerOf2(n)
+	fmt.Println(math.GenericFls(m))
+
+}

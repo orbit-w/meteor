@@ -27,8 +27,9 @@ type BufPool struct {
 
 func NewPool(maxSize int) *BufPool {
 	p := new(BufPool)
-	p.maxBufSize = maxSize
-	p.buffers = make([]sync.Pool, 17)
+	mz := math.PowerOf2(maxSize)
+	p.maxBufSize = mz
+	p.buffers = make([]sync.Pool, math.GenericFls(p.maxBufSize))
 
 	for k := range p.buffers {
 		size := 1 << uint32(k)
