@@ -14,7 +14,8 @@ import (
 */
 
 const (
-	maxSize = 65536
+	//maxSize = 65536
+	maxSize = 262144 //256kb
 )
 
 var defPool = NewPool(maxSize)
