@@ -127,7 +127,12 @@ func (pq *PriorityQueue[K, V, S]) Update(k K, v V, score S) {
 	}
 }
 
+// Empty returns the number of items in the priority queue.
+// It returns true if the priority queue is empty, otherwise it returns false.
 func (pq *PriorityQueue[K, V, S]) Empty() bool {
+	if pq.h == nil {
+		return true
+	}
 	return pq.h.Len() == 0
 }
 
@@ -184,4 +189,12 @@ func (pq *PriorityQueue[K, V, S]) UpdatePriorityOp(k K, op func(v S) S) bool {
 		pq.h.Fix(item.Index)
 	}
 	return exist
+}
+
+// Free clears the priority queue.
+//
+// Free 清除优先队列。
+func (pq *PriorityQueue[K, V, S]) Free() {
+	pq.h = &heap.Heap[Entry[K, V], S]{}
+	pq.items = make(map[K]*heap.Item[Entry[K, V], S], 0)
 }
