@@ -1,4 +1,4 @@
-package logger
+package zap_logger
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 */
 
 func Test_Logger(t *testing.T) {
-	logger := New("./logs/test.log", zap.InfoLevel)
+	logger := NewProductionLogger("./logs/test.log", zap.InfoLevel)
 	logger.Info("Info record")
 	logger.Error("Error record")
 	Stop(logger)

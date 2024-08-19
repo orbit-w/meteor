@@ -1,4 +1,4 @@
-package logger
+package zap_logger
 
 import (
 	"go.uber.org/zap"
@@ -6,7 +6,7 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-func New(fileName string, lv zapcore.Level) *zap.Logger {
+func NewProductionLogger(fileName string, lv zapcore.Level) *zap.Logger {
 	encoder := newEncoder()
 	core := zapcore.NewCore(encoder, zapcore.AddSync(&lumberjack.Logger{
 		Filename:   fileName,
