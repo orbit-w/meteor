@@ -3,10 +3,11 @@ package transport
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
-	"github.com/orbit-w/meteor/modules/net/logger"
 	gnetwork "github.com/orbit-w/meteor/modules/net/network"
+	"github.com/orbit-w/meteor/modules/net/transport/logger"
+	"github.com/spf13/viper"
+	"go.uber.org/zap"
 	"io"
 	"log"
 	"sync"
@@ -108,9 +109,7 @@ func ServeTest(t TestingT, host string, print bool) IServer {
 }
 
 func Test_Logger(t *testing.T) {
-	_ = flag.Set("v", "2")
-	// 解析命令行参数
-	flag.Parse()
+	viper.Set(logger.FlagStage, "Prod")
 
 	remoteAddr := "127.0.0.1"
 	buf := new(ControlBuffer)
@@ -131,15 +130,12 @@ func Test_Logger(t *testing.T) {
 		connState:       idle,
 		logger:          newTcpClientPrefixLogger(),
 	}
-	tc.logger.Error("test info, err: ", ErrCanceled)
-	tc.logger.Error("test info, err: ", ErrDisconnected)
-	tc.logger.Error("no heartbeat: ", tc.remoteAddr)
-	testStack(tc.logger)
-	time.Sleep(time.Second)
-}
+	tc.logger.Error("test info, err: ", zap.Error(ErrCanceled))
+	tc.logger.Error("test info, err: ", zap.Error(ErrDisconnected))
+	tc.logger.Error("no heartbeat: ", zap.String("Remote", tc.remoteAddr))
 
-func testStack(log *logger.PrefixLogger) {
-	log.Error("test stack")
+	tc.logger.Info("test info", zap.String("Remote", tc.remoteAddr))
+	time.Sleep(time.Second)
 }
 
 // TestingT is an interface wrapper around *testing.T

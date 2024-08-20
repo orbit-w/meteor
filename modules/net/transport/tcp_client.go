@@ -5,9 +5,10 @@ import (
 	"github.com/orbit-w/meteor/bases/misc/number_utils"
 	"github.com/orbit-w/meteor/bases/misc/utils"
 	packet2 "github.com/orbit-w/meteor/bases/net/packet"
-	"github.com/orbit-w/meteor/modules/net/logger"
 	gnetwork "github.com/orbit-w/meteor/modules/net/network"
+	"github.com/orbit-w/meteor/modules/net/transport/logger"
 	"github.com/orbit-w/meteor/modules/wrappers/sender_wrapper"
+	"go.uber.org/zap"
 	"io"
 	"net"
 	"sync"
@@ -41,7 +42,7 @@ type TcpClient struct {
 
 	connState int8       //代表链接状态
 	connCond  *sync.Cond //链接状态条件变量
-	logger    *logger.PrefixLogger
+	logger    *logger.ZapLogger
 }
 
 // DialWithOps Encapsulates asynchronous TCP connection establishment (with retries and backoff)
@@ -126,7 +127,7 @@ func (tc *TcpClient) handleDial(_ *DialOption) {
 	//the conn state will be set to the 'disconnected' state,
 	//and all virtual streams will be closed.
 	if err := withRetry(task); err != nil {
-		tc.logger.Errorf("dial failed, retry failed max limit: %s", err.Error())
+		tc.logger.Error("Dial failed, retry failed max limit", zap.Error(err))
 		tc.connCond.L.Lock()
 		tc.connState = connectedFailed
 		tc.connCond.L.Unlock()
@@ -174,7 +175,6 @@ func (tc *TcpClient) sendData(data packet2.IPacket) error {
 func (tc *TcpClient) dial() error {
 	conn, err := net.Dial("tcp", tc.remoteAddr)
 	if err != nil {
-		tc.logger.Error("dial failed: ", err.Error())
 		return err
 	}
 
@@ -277,7 +277,7 @@ func (tc *TcpClient) keepalive() {
 			}
 
 			if outstandingPing && timeout <= 0 {
-				tc.logger.Error("no heartbeat: ", tc.remoteAddr)
+				tc.logger.Error("No heartbeat", zap.String("RemoteAddr", tc.remoteAddr))
 				_ = tc.conn.Close()
 				return
 			}
@@ -348,6 +348,6 @@ func parseOptions(ops ...*DialOption) (dp *DialOption) {
 	return
 }
 
-func newTcpClientPrefixLogger() *logger.PrefixLogger {
+func newTcpClientPrefixLogger() *logger.ZapLogger {
 	return logger.NewLogger("Transport TcpClient")
 }
