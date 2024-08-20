@@ -1,4 +1,4 @@
-package net_logger
+package prefix_logger
 
 import (
 	"github.com/orbit-w/meteor/bases/zap_logger"
@@ -8,6 +8,8 @@ import (
 var (
 	baseLogger *zap.Logger
 )
+
+const d = 2
 
 func getBaseLogger() *zap.Logger {
 	if baseLogger == nil {
@@ -21,4 +23,10 @@ func SetBaseLogger(logger *zap.Logger) {
 		panic("global logger invalid")
 	}
 	baseLogger = logger
+}
+
+func StopBaseLogger() {
+	if baseLogger != nil {
+		_ = baseLogger.Sync()
+	}
 }

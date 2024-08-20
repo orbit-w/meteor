@@ -7,6 +7,7 @@ import (
 	"github.com/orbit-w/meteor/bases/misc/utils"
 	packet2 "github.com/orbit-w/meteor/bases/net/packet"
 	gnetwork "github.com/orbit-w/meteor/modules/net/network"
+	"github.com/orbit-w/meteor/modules/net/prefix_logger"
 	"github.com/orbit-w/meteor/modules/wrappers/sender_wrapper"
 	"io"
 	"log"
@@ -42,6 +43,7 @@ type TcpClient struct {
 
 	connState int8       //代表链接状态
 	connCond  *sync.Cond //链接状态条件变量
+	logger    *prefix_logger.Logger
 }
 
 // DialWithOps Encapsulates asynchronous TCP connection establishment (with retries and backoff)

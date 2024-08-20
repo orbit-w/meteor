@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/Workiva/go-datastructures v1.1.5
 	github.com/gogo/protobuf v1.3.2
+	github.com/golang/glog v1.2.2
 	github.com/json-iterator/go v1.1.12
 	github.com/redis/go-redis/v9 v9.5.4
 	github.com/stretchr/testify v1.9.0

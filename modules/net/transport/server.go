@@ -45,6 +45,7 @@ type Config struct {
 	IsGzip            bool
 	ReadTimeout       time.Duration
 	WriteTimeout      time.Duration
+	Stage             Stage
 }
 
 func (c *Config) ToAcceptorOptions() net.AcceptorOptions {
@@ -62,6 +63,7 @@ func DefaultServerConfig() *Config {
 		IsGzip:            false,
 		ReadTimeout:       ReadTimeout,
 		WriteTimeout:      WriteTimeout,
+		Stage:             DEV,
 	}
 }
 
@@ -80,6 +82,10 @@ func parseConfig(conf **Config) {
 
 	if (*conf).MaxIncomingPacket <= 0 {
 		(*conf).MaxIncomingPacket = net.MaxIncomingPacket
+	}
+
+	if (*conf).Stage > PROD {
+		(*conf).Stage = DEV
 	}
 }
 

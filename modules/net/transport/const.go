@@ -54,3 +54,12 @@ const (
 	TypeMessageHeartbeat
 	TypeMessageHeartbeatAck
 )
+
+type Stage uint32
+
+const (
+	DEV Stage = iota
+	TEST
+	RELEASE
+	PROD
+)
