@@ -38,3 +38,7 @@ func ReadBodyFailed(err error) error {
 func ReceiveBufPutErr(err error) error {
 	return errors.New(fmt.Sprintf("receiveBuf put failed: %s", err.Error()))
 }
+
+func EncodeGzipFailed(err error) error {
+	return errors.New(fmt.Sprintf("encode gzip failed: %s", err.Error()))
+}

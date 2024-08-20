@@ -1,4 +1,4 @@
-package prefix_logger
+package logger
 
 import (
 	"github.com/orbit-w/meteor/bases/zap_logger"
@@ -7,6 +7,12 @@ import (
 
 var (
 	baseLogger *zap.Logger
+)
+
+const (
+	FlagLogToStderr = "alsologtostderr" //是否输出到stderr
+	FlagLogDir      = "log_dir"         //日志存储路径
+	FlagV           = "v"               //日志等级
 )
 
 const d = 2

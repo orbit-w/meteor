@@ -3,7 +3,10 @@ package transport
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
+	"github.com/orbit-w/meteor/modules/net/logger"
+	gnetwork "github.com/orbit-w/meteor/modules/net/network"
 	"io"
 	"log"
 	"sync"
@@ -102,6 +105,41 @@ func ServeTest(t TestingT, host string, print bool) IServer {
 		panic(err.Error())
 	}
 	return server
+}
+
+func Test_Logger(t *testing.T) {
+	_ = flag.Set("v", "2")
+	// 解析命令行参数
+	flag.Parse()
+
+	remoteAddr := "127.0.0.1"
+	buf := new(ControlBuffer)
+	BuildControlBuffer(buf, 65536)
+	_ctx, cancel := context.WithCancel(context.Background())
+	tc := &TcpClient{
+		remoteAddr:      remoteAddr,
+		remoteNodeId:    "node_1",
+		currentNodeId:   "node_1",
+		maxIncomingSize: 65536,
+		buf:             buf,
+		ctx:             _ctx,
+		cancel:          cancel,
+		codec:           gnetwork.NewCodec(65536, false, time.Minute),
+		r:               gnetwork.NewBlockReceiver(),
+		writeTimeout:    time.Minute,
+		connCond:        sync.NewCond(&sync.Mutex{}),
+		connState:       idle,
+		logger:          newTcpClientPrefixLogger(),
+	}
+	tc.logger.Error("test info, err: ", ErrCanceled)
+	tc.logger.Error("test info, err: ", ErrDisconnected)
+	tc.logger.Error("no heartbeat: ", tc.remoteAddr)
+	testStack(tc.logger)
+	time.Sleep(time.Second)
+}
+
+func testStack(log *logger.PrefixLogger) {
+	log.Error("test stack")
 }
 
 // TestingT is an interface wrapper around *testing.T

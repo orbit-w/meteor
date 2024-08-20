@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	packet2 "github.com/orbit-w/meteor/bases/net/packet"
 	"io"
-	"log"
 	"net"
 	"time"
 )
@@ -53,8 +52,7 @@ func (c *Codec) EncodeBody(body packet2.IPacket) (packet2.IPacket, error) {
 	if c.isGzip {
 		compressed, err := EncodeGzip(body.Data())
 		if err != nil {
-			log.Println("[Codec] [func:encodeBody] encode gzip failed: ", err.Error())
-			return nil, err
+			return nil, EncodeGzipFailed(err)
 		}
 		writer(compressed)
 	} else {
@@ -76,8 +74,7 @@ func (c *Codec) EncodeBodyRaw(body []byte) (packet2.IPacket, error) {
 	if c.isGzip {
 		compressed, err := EncodeGzip(body)
 		if err != nil {
-			log.Println("[Codec] [func:encodeBody] encode gzip failed: ", err.Error())
-			return nil, err
+			return nil, EncodeGzipFailed(err)
 		}
 		writer(compressed)
 	} else {
@@ -122,23 +119,6 @@ func (c *Codec) decodeBody(buf packet2.IPacket) (packet2.IPacket, error) {
 		return buf, nil
 	}
 	return DecodeGzip(buf)
-}
-
-// body: size<int32> | gzipped<byte> | body<bytes>
-func (c *Codec) encodeBody(buf, body packet2.IPacket, gzipped bool) {
-	size := body.Len()
-	buf.WriteInt32(int32(size) + gzipSize)
-	buf.WriteBool(gzipped)
-	if gzipped {
-		compressed, err := EncodeGzip(body.Data())
-		if err != nil {
-			log.Println("[Codec] [func:encodeBody] encode gzip failed: ", err.Error())
-			return
-		}
-		buf.Write(compressed)
-		return
-	}
-	buf.Write(body.Data())
 }
 
 func (c *Codec) checkPacketSize(header []byte) error {

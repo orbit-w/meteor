@@ -6,11 +6,10 @@ import (
 	"github.com/orbit-w/meteor/bases/misc/number_utils"
 	"github.com/orbit-w/meteor/bases/misc/utils"
 	packet2 "github.com/orbit-w/meteor/bases/net/packet"
+	"github.com/orbit-w/meteor/modules/net/logger"
 	gnetwork "github.com/orbit-w/meteor/modules/net/network"
-	"github.com/orbit-w/meteor/modules/net/prefix_logger"
 	"github.com/orbit-w/meteor/modules/wrappers/sender_wrapper"
 	"io"
-	"log"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -43,7 +42,7 @@ type TcpClient struct {
 
 	connState int8       //代表链接状态
 	connCond  *sync.Cond //链接状态条件变量
-	logger    *prefix_logger.Logger
+	logger    *logger.PrefixLogger
 }
 
 // DialWithOps Encapsulates asynchronous TCP connection establishment (with retries and backoff)
@@ -70,6 +69,7 @@ func DialContextWithOps(ctx context.Context, remoteAddr string, _ops ...*DialOpt
 		writeTimeout:    dp.WriteTimeout,
 		connCond:        sync.NewCond(&sync.Mutex{}),
 		connState:       idle,
+		logger:          newTcpClientPrefixLogger(),
 	}
 
 	go tc.handleDial(dp)
@@ -151,7 +151,7 @@ func (tc *TcpClient) handleDial(_ *DialOption) {
 func (tc *TcpClient) SendData(data packet2.IPacket) error {
 	err := tc.sendData(data)
 	if err != nil {
-		//log.Println("[TcpClient] [func: SendData] exec failed: ", err.Error())
+		//logger.Println("[TcpClient] [func: SendData] exec failed: ", err.Error())
 		if tc.conn != nil {
 			_ = tc.conn.Close()
 		}
@@ -176,7 +176,7 @@ func (tc *TcpClient) sendData(data packet2.IPacket) error {
 func (tc *TcpClient) dial() error {
 	conn, err := net.Dial("tcp", tc.remoteAddr)
 	if err != nil {
-		log.Println("[TcpClient] dial failed: ", err.Error())
+		tc.logger.Error("dial failed: ", err.Error())
 		return err
 	}
 
@@ -279,7 +279,7 @@ func (tc *TcpClient) keepalive() {
 			}
 
 			if outstandingPing && timeout <= 0 {
-				log.Println("[TcpClient] no heartbeat: ", tc.remoteAddr)
+				tc.logger.Error("no heartbeat: ", tc.remoteAddr)
 				_ = tc.conn.Close()
 				return
 			}
@@ -348,4 +348,8 @@ func parseOptions(ops ...*DialOption) (dp *DialOption) {
 		dp.ReadTimeout = ReadTimeout
 	}
 	return
+}
+
+func newTcpClientPrefixLogger() *logger.PrefixLogger {
+	return logger.NewLogger("Transport TcpClient")
 }
