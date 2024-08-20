@@ -2,7 +2,6 @@ package transport
 
 import (
 	"context"
-	"fmt"
 	"github.com/orbit-w/meteor/bases/misc/number_utils"
 	"github.com/orbit-w/meteor/bases/misc/utils"
 	packet2 "github.com/orbit-w/meteor/bases/net/packet"
@@ -127,7 +126,7 @@ func (tc *TcpClient) handleDial(_ *DialOption) {
 	//the conn state will be set to the 'disconnected' state,
 	//and all virtual streams will be closed.
 	if err := withRetry(task); err != nil {
-		fmt.Println("retry failed max limit")
+		tc.logger.Errorf("dial failed, retry failed max limit: %s", err.Error())
 		tc.connCond.L.Lock()
 		tc.connState = connectedFailed
 		tc.connCond.L.Unlock()
@@ -151,7 +150,6 @@ func (tc *TcpClient) handleDial(_ *DialOption) {
 func (tc *TcpClient) SendData(data packet2.IPacket) error {
 	err := tc.sendData(data)
 	if err != nil {
-		//logger.Println("[TcpClient] [func: SendData] exec failed: ", err.Error())
 		if tc.conn != nil {
 			_ = tc.conn.Close()
 		}
