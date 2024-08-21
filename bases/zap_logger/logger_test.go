@@ -13,7 +13,7 @@ import (
 */
 
 func Test_Logger(t *testing.T) {
-	logger := NewProductionLogger("./logs/test.log", zap.InfoLevel)
+	logger := NewLogger("./logs/test.log", zap.InfoLevel)
 	logger.Info("Info record")
 	logger.Error("Error record")
 	Stop(logger)

@@ -109,7 +109,7 @@ func ServeTest(t TestingT, host string, print bool) IServer {
 }
 
 func Test_Logger(t *testing.T) {
-	viper.Set(logger.FlagStage, "Prod")
+	viper.Set(logger.FlagLogDir, "./transport.log")
 
 	remoteAddr := "127.0.0.1"
 	buf := new(ControlBuffer)

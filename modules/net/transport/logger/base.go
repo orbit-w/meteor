@@ -13,14 +13,6 @@ import (
    @2024 8月 周二 23:04
 */
 
-type logStage int8
-
-var (
-	Debug logStage = 0
-	Dev   logStage = 1
-	Prod  logStage = 2
-)
-
 var (
 	baseLogger *zap.Logger
 )
@@ -43,15 +35,9 @@ func NewZapLogger() *zap.Logger {
 
 	dir = viper.GetString(FlagLogDir)
 	if dir == "" {
-		dir = "./transport.log"
-	}
-
-	stage := viper.GetString(FlagStage)
-	switch selectStage(stage) {
-	case Prod:
-		return zap_logger.NewProductionLogger(dir, zlv)
-	default:
 		return zap_logger.NewDevelopmentLogger()
+	} else {
+		return zap_logger.NewLogger(dir, zlv)
 	}
 }
 
@@ -67,19 +53,6 @@ func selectLevel(lv string) zapcore.Level {
 		return zap.ErrorLevel
 	default:
 		return zap.InfoLevel
-	}
-}
-
-func selectStage(stage string) logStage {
-	switch stage {
-	case "Dev", "dev", "DEV", "Development", "development",
-		"debug", "Debug", "DEBUG":
-		return Dev
-	case "Prod", "prod", "PROD", "Production", "production",
-		"release", "Release", "RELEASE":
-		return Prod
-	default:
-		return Dev
 	}
 }
 

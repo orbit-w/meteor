@@ -70,6 +70,9 @@ if err != nil {
 - `Receive(buffer []byte) (int, error)`
 - `Close() error`
 
+## Logger
+有关 Logger 模块的详细信息，请参阅 [Logger 模块文档](./logger/README.md)。
+
 ## Client
 ```go
 package main

@@ -6,7 +6,7 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-func NewProductionLogger(fileName string, lv zapcore.Level) *zap.Logger {
+func NewLogger(fileName string, lv zapcore.Level) *zap.Logger {
 	encoder := newEncoder()
 	core := zapcore.NewCore(encoder, zapcore.AddSync(&lumberjack.Logger{
 		Filename:   fileName,
