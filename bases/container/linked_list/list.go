@@ -6,7 +6,8 @@ package linked_list
    @File: list
 */
 
-//LinkedList doubly linked list
+// LinkedList doubly linked list
+// LinkedList 双向链表
 type LinkedList[K comparable, V any] struct {
 	root Entry[K, V]
 	len  int
@@ -28,6 +29,8 @@ func (ins *LinkedList[K, V]) Len() int {
 	return ins.len
 }
 
+// LPush inserts a new entry at the beginning of the LinkedList
+// LPush 在 LinkedList 的开头插入一个新的元素
 func (ins *LinkedList[K, V]) LPush(k K, v V) *Entry[K, V] {
 	ent := &Entry[K, V]{
 		Key:   k,
@@ -37,6 +40,8 @@ func (ins *LinkedList[K, V]) LPush(k K, v V) *Entry[K, V] {
 	return ent
 }
 
+// LPop removes and returns the first entry of the LinkedList
+// LPop 移除并返回 LinkedList 的第一个元素
 func (ins *LinkedList[K, V]) LPop() *Entry[K, V] {
 	if ins.isEmpty() {
 		return nil
@@ -46,11 +51,22 @@ func (ins *LinkedList[K, V]) LPop() *Entry[K, V] {
 	return ent
 }
 
+func (ins *LinkedList[K, V]) LPeek() *Entry[K, V] {
+	if ins.isEmpty() {
+		return nil
+	}
+	return ins.root.next
+}
+
+// Remove removes a specific entry from the LinkedList
+// Remove 从 LinkedList 中移除一个特定的元素
 func (ins *LinkedList[K, V]) Remove(ent *Entry[K, V]) V {
 	ins.remove(ent)
 	return ent.Value
 }
 
+// LMove moves a specific entry to the beginning of the LinkedList
+// LMove 将一个特定的元素移动到 LinkedList 的开头
 func (ins *LinkedList[K, V]) LMove(ent *Entry[K, V]) {
 	if ins.root.next == ent {
 		return
@@ -60,6 +76,7 @@ func (ins *LinkedList[K, V]) LMove(ent *Entry[K, V]) {
 }
 
 // RPop returns the last element of list l or nil if the list is empty.
+// RPop 返回 LinkedList 的最后一个元素，如果链表为空则返回 nil
 func (ins *LinkedList[K, V]) RPop() *Entry[K, V] {
 	if ins.isEmpty() {
 		return nil
@@ -69,6 +86,17 @@ func (ins *LinkedList[K, V]) RPop() *Entry[K, V] {
 	return ent
 }
 
+// RPeek returns the last entry of the LinkedList without removing it
+// RPeek 返回 LinkedList 的最后一个元素，但不移除它
+func (ins *LinkedList[K, V]) RPeek() *Entry[K, V] {
+	if ins.isEmpty() {
+		return nil
+	}
+	return ins.root.prev
+}
+
+// RRange iterates over the last num elements of the LinkedList
+// RRange 遍历 LinkedList 的最后 num 个元素
 func (ins *LinkedList[K, V]) RRange(num int, iter func(k K, v V)) {
 	var i int
 	for b := ins.root.prev; b != nil && i < num; b = b.Prev() {

@@ -1,6 +1,7 @@
 package linked_list
 
 import (
+	"fmt"
 	"strconv"
 	"testing"
 )
@@ -19,4 +20,23 @@ func TestPush(t *testing.T) {
 		list.LPush(uuid, 0)
 	}
 
+}
+
+func TestLinkedList_LPush(t *testing.T) {
+	list := New[string, int8]()
+	id := 1679600
+	for i := 0; i < 20; i++ {
+		uuid := strconv.FormatInt(int64(id+i), 10)
+		list.LPush(uuid, 0)
+	}
+
+	for {
+		ent := list.RPeek()
+		if ent == nil {
+			break
+		}
+
+		fmt.Println(ent.Key)
+		list.RPop()
+	}
 }
