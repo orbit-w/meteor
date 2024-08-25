@@ -22,6 +22,7 @@ func TestScheduler_Add(t *testing.T) {
 
 	for index := 1; index < 6; index++ {
 		queue := make(chan bool, 1)
+		time.Sleep(time.Millisecond * 90)
 		start := time.Now()
 		s.Add(time.Duration(index)*time.Second, false, func(args ...any) {
 			queue <- true
@@ -43,6 +44,7 @@ func TestScheduler_AddSingle(t *testing.T) {
 		_ = s.Stop(context.Background())
 	}()
 	queue := make(chan bool, 1)
+	time.Sleep(time.Millisecond * 100)
 	start := time.Now()
 	s.Add(time.Duration(1)*time.Second, false, func(args ...any) {
 		queue <- true
