@@ -18,7 +18,7 @@ import (
 
 type IUnbounded[V any] interface {
 	Send(msg V) error
-	Receive(consumer func(msg V) bool)
+	Receive(consumer func(msg V) (exit bool))
 	Close()
 }
 
@@ -74,7 +74,7 @@ func (ins *Unbounded[V]) Send(msg V) error {
 }
 
 // Receive sync consume with flush all
-func (ins *Unbounded[V]) Receive(consumer func(msg V) bool) {
+func (ins *Unbounded[V]) Receive(consumer func(msg V) (exit bool)) {
 	defer func() {
 		// safety return
 		ins.flushAll(consumer)

@@ -51,6 +51,22 @@ func (ins *LinkedList[K, V]) LPop() *Entry[K, V] {
 	return ent
 }
 
+// LPopAt removes and returns the i-th entry of the LinkedList or nil if the list is empty or i is out of range.
+// i is zero-based.
+// LPopAt 移除并返回 LinkedList 的第 i 个元素，如果链表为空或 i 超出范围则返回 nil。
+// i 是从 0 开始的。
+func (ins *LinkedList[K, V]) LPopAt(i int) *Entry[K, V] {
+	if ins.isEmpty() || i < 0 || i >= ins.len {
+		return nil
+	}
+	ent := &ins.root
+	for j := 0; j <= i; j++ {
+		ent = ent.next
+	}
+	ins.remove(ent)
+	return ent
+}
+
 func (ins *LinkedList[K, V]) LPeek() *Entry[K, V] {
 	if ins.isEmpty() {
 		return nil
@@ -86,6 +102,22 @@ func (ins *LinkedList[K, V]) RPop() *Entry[K, V] {
 	return ent
 }
 
+// RPopAt returns the i-th last element of the LinkedList or nil if the list is empty or i is out of range.
+// i is zero-based.
+// RPopAt 返回 LinkedList 的倒数第 i 个元素，如果链表为空或 i 超出范围则返回 nil。
+// i 是从 0 开始的。
+func (ins *LinkedList[K, V]) RPopAt(i int) *Entry[K, V] {
+	if ins.isEmpty() || i < 0 || i >= ins.len {
+		return nil
+	}
+	ent := &ins.root
+	for j := 0; j <= i; j++ {
+		ent = ent.prev
+	}
+	ins.remove(ent)
+	return ent
+}
+
 // RPeek returns the last entry of the LinkedList without removing it
 // RPeek 返回 LinkedList 的最后一个元素，但不移除它
 func (ins *LinkedList[K, V]) RPeek() *Entry[K, V] {
@@ -93,6 +125,19 @@ func (ins *LinkedList[K, V]) RPeek() *Entry[K, V] {
 		return nil
 	}
 	return ins.root.prev
+}
+
+// RPeekAt returns the i-th last entry of the LinkedList without removing it or nil if the list is empty or i is out of range.
+// RPeekAt 返回 LinkedList 的倒数第 i 个元素，但不移除它，如果链表为空或 i 超出范围则返回 nil
+func (ins *LinkedList[K, V]) RPeekAt(i int) *Entry[K, V] {
+	if ins.isEmpty() || i < 0 || i >= ins.len {
+		return nil
+	}
+	ent := &ins.root
+	for j := 0; j <= i; j++ {
+		ent = ent.prev
+	}
+	return ent
 }
 
 // RRange iterates over the last num elements of the LinkedList

@@ -40,3 +40,20 @@ func TestLinkedList_LPush(t *testing.T) {
 		list.RPop()
 	}
 }
+
+func TestLinkedList_RPopAt(t *testing.T) {
+	list := New[string, int8]()
+	id := 1679600
+	for i := 0; i < 20; i++ {
+		uuid := strconv.FormatInt(int64(id+i), 10)
+		list.LPush(uuid, 0)
+	}
+
+	fmt.Println(list.RPopAt(1).Key)
+	list = New[string, int8]()
+	for i := 0; i < 20; i++ {
+		uuid := strconv.FormatInt(int64(id+i), 10)
+		list.LPush(uuid, 0)
+	}
+	fmt.Println(list.RPopAt(19))
+}

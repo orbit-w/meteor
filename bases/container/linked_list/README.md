@@ -29,6 +29,10 @@
 - `RPop() *Entry[K, V]`
     - 返回 LinkedList 的最后一个元素，如果链表为空则返回 nil
 
+- `RPopAt(i int) *Entry[K, V]`
+    - RPopAt 返回 LinkedList 的倒数第 i 个元素，如果链表为空或 i 超出范围则返回 nil。
+    - i 是从 0 开始的。
+
 - `RPeek() *Entry[K, V]`
     - 返回 LinkedList 的最后一个元素，但不移除它
 
