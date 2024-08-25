@@ -5,8 +5,8 @@ import (
 	"github.com/orbit-w/meteor/bases/misc/number_utils"
 	"github.com/orbit-w/meteor/bases/misc/utils"
 	packet2 "github.com/orbit-w/meteor/bases/net/packet"
+	"github.com/orbit-w/meteor/modules/mlog"
 	gnetwork "github.com/orbit-w/meteor/modules/net/network"
-	"github.com/orbit-w/meteor/modules/net/transport/logger"
 	"github.com/orbit-w/meteor/modules/wrappers/sender_wrapper"
 	"go.uber.org/zap"
 	"io"
@@ -42,7 +42,7 @@ type TcpClient struct {
 
 	connState int8       //代表链接状态
 	connCond  *sync.Cond //链接状态条件变量
-	logger    *logger.ZapLogger
+	logger    *mlog.ZapLogger
 }
 
 // DialWithOps Encapsulates asynchronous TCP connection establishment (with retries and backoff)
@@ -348,6 +348,6 @@ func parseOptions(ops ...*DialOption) (dp *DialOption) {
 	return
 }
 
-func newTcpClientPrefixLogger() *logger.ZapLogger {
-	return logger.NewLogger("Transport TcpClient")
+func newTcpClientPrefixLogger() *mlog.ZapLogger {
+	return mlog.NewLogger("Transport TcpClient")
 }

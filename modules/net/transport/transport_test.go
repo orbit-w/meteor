@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/orbit-w/meteor/modules/mlog"
 	gnetwork "github.com/orbit-w/meteor/modules/net/network"
-	"github.com/orbit-w/meteor/modules/net/transport/logger"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"io"
@@ -109,7 +109,7 @@ func ServeTest(t TestingT, host string, print bool) IServer {
 }
 
 func Test_Logger(t *testing.T) {
-	viper.Set(logger.FlagLogDir, "./transport.log")
+	viper.Set(mlog.FlagLogDir, "./transport.log")
 
 	remoteAddr := "127.0.0.1"
 	buf := new(ControlBuffer)
