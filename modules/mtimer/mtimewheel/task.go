@@ -34,26 +34,30 @@ func (cb *Callback) Exec() {
 type Timer struct {
 	id       uint64
 	delay    time.Duration
-	expireAt time.Time
 	round    int
 	callback Callback
 
 	circle bool
 }
 
-func newTask(_id uint64, _delay time.Duration, cb Callback, _circle bool) *Timer {
+func newTimer(_id uint64, _delay time.Duration, cb Callback, _circle bool) *Timer {
 	return &Timer{
 		id:       _id,
 		delay:    _delay,
-		expireAt: time.Now().Add(_delay),
 		callback: cb,
 		circle:   _circle,
 	}
 }
 
-func (t *Timer) Circle() bool {
-	if t.circle {
-		t.expireAt = time.Now().Add(t.delay)
+type Task struct {
+	Id       uint64
+	cb       Callback
+	expireAt time.Time
+}
+
+func newTask(cb Callback, expireAt time.Time) Task {
+	return Task{
+		cb:       cb,
+		expireAt: expireAt,
 	}
-	return t.circle
 }

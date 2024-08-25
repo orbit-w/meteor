@@ -49,7 +49,7 @@ func (tw *TimeWheel) Add(delay time.Duration, circle bool, callback func(...any)
 }
 
 func (tw *TimeWheel) addTask(delay time.Duration, cb Callback, circle bool) {
-	task := newTask(tw.uniqueID(), delay, cb, circle)
+	task := newTimer(tw.uniqueID(), delay, cb, circle)
 	tw.rw.Lock()
 	defer tw.rw.Unlock()
 	tw.reg(delay, task)
@@ -77,31 +77,30 @@ func (tw *TimeWheel) Stop() {
 
 // tick advances the TimeWheel by one tick and executes due tasks
 // tick 将 TimeWheel 前进一个刻度并执行到期的任务
-func (tw *TimeWheel) tick(handleCB func(cb Callback)) {
+func (tw *TimeWheel) tick(handleCB func(task Task)) {
 	tw.rw.Lock()
 	defer tw.rw.Unlock()
 
 	bucket := tw.buckets[tw.pos]
 	var diff int
-
 	for {
-		task := bucket.Peek(diff)
-		if task == nil {
+		timer := bucket.Peek(diff)
+		if timer == nil {
 			break
 		}
 
-		if task.round > 0 {
+		if timer.round > 0 {
 			diff++
-			task.round--
+			timer.round--
 			continue
 		}
 
-		handleCB(task.callback)
+		handleCB(newTask(timer.callback, time.Now().Add(taskTimeout)))
 		bucket.Pop(diff)
 
 		//TODO:
-		if task.Circle() {
-			tw.reg(task.delay, task)
+		if timer.circle {
+			tw.reg(timer.delay, timer)
 		}
 	}
 
@@ -117,12 +116,12 @@ func (tw *TimeWheel) calcPositionAndCircle(delay time.Duration) (next int, circl
 	return
 }
 
-func (tw *TimeWheel) reg(delay time.Duration, task *Timer) {
+func (tw *TimeWheel) reg(delay time.Duration, timer *Timer) {
 	pos, circleNum := tw.calcPositionAndCircle(delay)
 
-	task.round = circleNum
+	timer.round = circleNum
 
-	tw.buckets[pos].Set(task)
+	tw.buckets[pos].Set(timer)
 }
 
 func (tw *TimeWheel) uniqueID() uint64 {

@@ -108,8 +108,12 @@ func (s *Scheduler) runConsumer() {
 	}()
 }
 
-func (s *Scheduler) handleCB(cb Callback) {
-	if err := s.ch.Send(cb); err != nil {
+func (s *Scheduler) handleCB(task Task) {
+	if task.expireAt.Before(time.Now()) {
+		s.log.Error("task exec timeout", zap.Duration("delay", time.Since(task.expireAt)))
+		return
+	}
+	if err := s.ch.Send(task.cb); err != nil {
 		s.log.Error("send callback failed", zap.Error(err))
 	}
 }
