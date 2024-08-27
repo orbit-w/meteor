@@ -38,26 +38,12 @@ type Scheduler struct {
 // NewScheduler 创建一个新的 Scheduler，使用给定的时间间隔和刻度数
 func NewScheduler(interval time.Duration, scales int) *Scheduler {
 	return &Scheduler{
-		tw:            NewTimeWheel(interval, scales),
 		ch:            unbounded.New[Callback](1024),
 		interval:      interval,
 		log:           mlog.NewLogger("scheduler"),
 		stop:          make(chan struct{}, 1),
 		closeComplete: make(chan struct{}, 1),
 	}
-}
-
-// Add adds a new task to the Scheduler with the specified delay, circle flag, callback function, and arguments
-// Add 添加一个新的任务到 Scheduler，使用指定的延迟、循环标志、回调函数和参数
-func (s *Scheduler) Add(delay time.Duration, circle bool, callback func(...any), args ...any) {
-	s.tw.Add(delay, circle, callback, args)
-}
-
-// Remove removes a task from the Scheduler by its task ID
-// Remove 通过任务 ID 从 Scheduler 中移除一个任务
-func (s *Scheduler) Remove(id uint64) {
-	// Implementation to remove task by ID
-	s.tw.RemoveTask(id)
 }
 
 // Start starts the Scheduler, initiating the ticking
@@ -68,14 +54,12 @@ func (s *Scheduler) Start() {
 
 	go func() {
 		defer func() {
-			s.tw.Stop()
 			s.ch.Close()
 			s.ticker.Stop()
 		}()
 		for {
 			select {
 			case <-s.ticker.C:
-				s.tw.tick(s.handleCB)
 			case <-s.stop:
 				return
 			}

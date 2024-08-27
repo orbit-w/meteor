@@ -1,7 +1,9 @@
 package timewheel
 
 import (
+	"github.com/orbit-w/meteor/modules/mlog"
 	"go.uber.org/atomic"
+	"go.uber.org/zap"
 	"sync"
 	"time"
 )
@@ -12,28 +14,53 @@ import (
    @2024 8月 周四 23:16
 */
 
-type MultiTimeWheel struct {
+type HierarchicalTimeWheel struct {
 	rw       sync.RWMutex
 	interval time.Duration
+	log      *mlog.ZapLogger
 	lowest   *TimeWheel
 	levels   []*TimeWheel
+	sender   func(t *Timer)
 }
 
-func (mtw *MultiTimeWheel) tick(handle func(t *Timer)) {
+func NewHierarchicalTimeWheel(handleCB func(task Task)) *HierarchicalTimeWheel {
+	levels := make([]*TimeWheel, 3)
+	levels[LvSecond] = NewTimeWheel(SecondInterval, LvSecond, SecondScales)
+	levels[LvMinute] = NewTimeWheel(MinuteInterval, LvMinute, MinuteScales)
+	levels[LvHour] = NewTimeWheel(HourInterval, LvHour, HourScales)
+
+	return &HierarchicalTimeWheel{
+		rw:       sync.RWMutex{},
+		interval: time.Millisecond * 100,
+		lowest:   levels[LvSecond],
+		levels:   levels,
+		log:      mlog.NewLogger("hierarchical-time-wheel"),
+		sender: func(t *Timer) {
+			task := newTask(t.callback, time.Now().Add(taskTimeout))
+			handleCB(task)
+		},
+	}
+}
+
+func (mtw *HierarchicalTimeWheel) tick() {
 	for lv := range mtw.levels {
 		tw := mtw.levels[lv]
-		var h func(t *Timer)
-		if lv == 0 {
-			h = handle
-		} else {
-			h = func(t *Timer) {
-				mtw.lowest.add(t)
-			}
+		var h = mtw.sender
+		if lv != 0 {
+			//高级时间轮的任务是将任务加入到低级时间轮
+			h = mtw.addTimer
 		}
-		tw.tick(handle)
+		tw.tick(h)
 		if !tw.movingForward() {
 			continue
 		}
+	}
+}
+
+func (mtw *HierarchicalTimeWheel) addTimer(t *Timer) {
+	//从最低级时间轮子添加任务
+	if err := mtw.lowest.add(t); err != nil {
+		mtw.log.Error("addTimer timer to lowest time wheel failed", zap.Error(err))
 	}
 }
 
@@ -99,9 +126,8 @@ func (tw *TimeWheel) tick(handle func(t *Timer)) {
 			timer.round--
 			continue
 		}
-
-		handle(timer)
 		bucket.Pop(diff)
+		handle(timer)
 	}
 }
 
@@ -115,9 +141,7 @@ func (tw *TimeWheel) calcPosition(delay int64) (pos int, circle int) {
 }
 
 func (tw *TimeWheel) calcPositionAndCircle(delay int64) (pos int, circle int) {
-	ds := int(delay)
-	is := int(tw.interval.Milliseconds())
-	step := ds / is
+	step := int(delay / tw.intervalMs)
 	circle = step / tw.scales
 	pos = (tw.pos + step) % tw.scales
 	return
