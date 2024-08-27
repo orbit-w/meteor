@@ -29,6 +29,7 @@ type Scheduler struct {
 	ticker        *time.Ticker
 	log           *mlog.ZapLogger
 	ch            unbounded.IUnbounded[Callback]
+	twList        []*TimeWheel
 	stop          chan struct{}
 	closeComplete chan struct{}
 }
