@@ -43,7 +43,17 @@ func NewHierarchicalTimeWheel(handleCB func(task Task)) *HierarchicalTimeWheel {
 }
 
 func (mtw *HierarchicalTimeWheel) tick() {
+	var i int
+	//从最低级时间轮开始，依次向上执行检查，确定需要推进pos的轮截止位置
 	for lv := range mtw.levels {
+		i = lv
+		tw := mtw.levels[lv]
+		if !tw.movingForward() {
+			break
+		}
+	}
+
+	for lv := i; lv >= 0; lv-- {
 		tw := mtw.levels[lv]
 		var h = mtw.sender
 		if lv != 0 {
@@ -51,9 +61,6 @@ func (mtw *HierarchicalTimeWheel) tick() {
 			h = mtw.addTimer
 		}
 		tw.tick(h)
-		if !tw.movingForward() {
-			continue
-		}
 	}
 }
 
@@ -107,7 +114,6 @@ func (tw *TimeWheel) add(t *Timer) error {
 	}
 
 	//将任务加入到当前时间轮
-	//TODO: 加入到当前的pos，是否要注意会导致任务无法被执行？
 	tw.buckets[pos].Set(t)
 	return nil
 }
@@ -129,15 +135,7 @@ func (tw *TimeWheel) tick(handle func(t *Timer)) {
 		bucket.Pop(diff)
 		handle(timer)
 	}
-}
-
-func (tw *TimeWheel) calcPosition(delay int64) (pos int, circle int) {
-	ds := int(delay)
-	is := int(tw.interval.Milliseconds())
-	step := ds / is
-	circle = step / tw.scales
-	pos = (tw.pos + step) % tw.scales
-	return
+	tw.pos = (tw.pos + 1) % tw.scales
 }
 
 func (tw *TimeWheel) calcPositionAndCircle(delay int64) (pos int, circle int) {
@@ -152,5 +150,5 @@ func (tw *TimeWheel) uniqueID() uint64 {
 }
 
 func (tw *TimeWheel) movingForward() bool {
-	return tw.pos == 0
+	return (tw.pos+1)%tw.scales == 0
 }
