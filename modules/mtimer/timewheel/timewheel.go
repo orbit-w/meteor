@@ -44,6 +44,7 @@ func NewHierarchicalTimeWheel(handleCB func(task Task)) *HierarchicalTimeWheel {
 
 	// Return a new HierarchicalTimeWheel instance.
 	return &HierarchicalTimeWheel{
+		stamp:    time.Now().UnixMilli(),
 		interval: SecondInterval,
 		bottom:   levels[LvSecond], // The bottom level is the second-level time wheel.
 		levels:   levels,
@@ -58,9 +59,10 @@ func NewHierarchicalTimeWheel(handleCB func(task Task)) *HierarchicalTimeWheel {
 
 func (htw *HierarchicalTimeWheel) tick() {
 	now := time.Now().UnixMilli()
-	if htw.stamp+htw.interval < now {
+	if htw.stamp+htw.interval <= now {
 		htw.stamp = now
 	} else {
+		htw.bottom.tick(htw.sender, false)
 		return
 	}
 
@@ -84,7 +86,7 @@ func (htw *HierarchicalTimeWheel) tick() {
 			//高级时间轮的任务是将任务加入到最底层时间轮
 			h = htw.addTimer
 		}
-		tw.tick(h)
+		tw.tick(h, true)
 	}
 }
 
@@ -162,7 +164,7 @@ func (tw *TimeWheel) addWithoutLock(t *Timer) error {
 	return nil
 }
 
-func (tw *TimeWheel) tick(handle func(t *Timer)) {
+func (tw *TimeWheel) tick(handle func(t *Timer), forward bool) {
 	tw.mux.Lock()
 	defer tw.mux.Unlock()
 
@@ -184,8 +186,11 @@ func (tw *TimeWheel) tick(handle func(t *Timer)) {
 		bucket.Pop(diff)
 		handle(timer)
 	}
-	//指针前进一步
-	tw.pos = (tw.pos + 1) % tw.scales
+
+	if forward {
+		//指针前进一步
+		tw.pos = (tw.pos + 1) % tw.scales
+	}
 }
 
 func (tw *TimeWheel) isBottom() bool {

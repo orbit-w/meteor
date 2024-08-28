@@ -20,9 +20,8 @@ func TestScheduler_Add(t *testing.T) {
 		_ = s.Stop(context.Background())
 	}()
 
-	for index := 1; index < 6; index++ {
+	for index := 1; index < 10; index++ {
 		queue := make(chan bool, 1)
-		time.Sleep(time.Millisecond * 800)
 		start := time.Now()
 		_ = s.Add(time.Duration(index)*time.Second, func(args ...any) {
 			queue <- true
