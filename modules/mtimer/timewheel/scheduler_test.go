@@ -14,7 +14,7 @@ import (
 */
 
 func TestScheduler_Add(t *testing.T) {
-	s := NewScheduler(100*time.Millisecond, 5)
+	s := NewScheduler()
 	s.Start()
 	defer func() {
 		_ = s.Stop(context.Background())
@@ -22,9 +22,9 @@ func TestScheduler_Add(t *testing.T) {
 
 	for index := 1; index < 6; index++ {
 		queue := make(chan bool, 1)
-		time.Sleep(time.Millisecond * 90)
+		time.Sleep(time.Millisecond * 800)
 		start := time.Now()
-		s.Add(time.Duration(index)*time.Second, false, func(args ...any) {
+		_ = s.Add(time.Duration(index)*time.Second, func(args ...any) {
 			queue <- true
 		})
 
@@ -38,7 +38,7 @@ func TestScheduler_Add(t *testing.T) {
 }
 
 func TestScheduler_AddSingle(t *testing.T) {
-	s := NewScheduler(100*time.Millisecond, 5)
+	s := NewScheduler()
 	s.Start()
 	defer func() {
 		_ = s.Stop(context.Background())
@@ -46,7 +46,7 @@ func TestScheduler_AddSingle(t *testing.T) {
 	queue := make(chan bool, 1)
 	time.Sleep(time.Millisecond * 100)
 	start := time.Now()
-	s.Add(time.Duration(1)*time.Second, false, func(args ...any) {
+	s.Add(time.Duration(1)*time.Second, func(args ...any) {
 		queue <- true
 	})
 
@@ -59,7 +59,7 @@ func TestScheduler_AddSingle(t *testing.T) {
 }
 
 func TestScheduler_Remove(t *testing.T) {
-	s := NewScheduler(100*time.Millisecond, 5)
+	s := NewScheduler()
 	s.Start()
 	defer func() {
 		_ = s.Stop(context.Background())
@@ -67,7 +67,7 @@ func TestScheduler_Remove(t *testing.T) {
 
 	queue := make(chan bool, 1)
 	start := time.Now()
-	s.Add(1*time.Second, false, func(args ...any) {
+	s.Add(1*time.Second, func(args ...any) {
 		queue <- true
 	})
 

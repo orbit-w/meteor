@@ -24,26 +24,34 @@ import (
 // Scheduler struct that manages the scheduling of tasks using a TimeWheel
 // Scheduler 结构体，使用时间轮管理任务调度
 type Scheduler struct {
-	tw            *TimeWheel
+	htw           *HierarchicalTimeWheel
 	interval      time.Duration
 	ticker        *time.Ticker
 	log           *mlog.ZapLogger
 	ch            unbounded.IUnbounded[Callback]
-	twList        []*TimeWheel
 	stop          chan struct{}
 	closeComplete chan struct{}
 }
 
 // NewScheduler creates a new Scheduler with the given interval and scales
 // NewScheduler 创建一个新的 Scheduler，使用给定的时间间隔和刻度数
-func NewScheduler(interval time.Duration, scales int) *Scheduler {
-	return &Scheduler{
-		ch:            unbounded.New[Callback](1024),
-		interval:      interval,
-		log:           mlog.NewLogger("scheduler"),
-		stop:          make(chan struct{}, 1),
-		closeComplete: make(chan struct{}, 1),
-	}
+func NewScheduler() *Scheduler {
+	s := new(Scheduler)
+	s.ch = unbounded.New[Callback](1024)
+	s.interval = time.Millisecond * 100
+	s.log = mlog.NewLogger("scheduler")
+	s.htw = NewHierarchicalTimeWheel(s.handleCB)
+	s.stop = make(chan struct{}, 1)
+	s.closeComplete = make(chan struct{}, 1)
+	return s
+}
+
+func (s *Scheduler) Add(delay time.Duration, callback func(...any), args ...any) error {
+	return s.htw.Add(delay, callback, args)
+}
+
+func (s *Scheduler) Remove(id uint64) {
+
 }
 
 // Start starts the Scheduler, initiating the ticking
@@ -60,6 +68,7 @@ func (s *Scheduler) Start() {
 		for {
 			select {
 			case <-s.ticker.C:
+				s.htw.tick()
 			case <-s.stop:
 				return
 			}
