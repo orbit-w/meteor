@@ -18,25 +18,28 @@ type HierarchicalTimeWheel struct {
 	stop   chan struct{}
 }
 
-// NewHierarchicalTimeWheel 创建一个分层时间轮
-// handleCB 任务回调函数
 // NewHierarchicalTimeWheel creates a new hierarchical time wheel with three levels: second, minute, and hour.
 // handleCB is a callback function that will be called when a task is due.
+//
+// NewHierarchicalTimeWheel 创建一个分层时间轮，包含三个层级：秒、分钟和小时。
+// handleCB 是一个回调函数，当任务到期时会被调用。
 func NewHierarchicalTimeWheel(handleCB func(task Task)) *HierarchicalTimeWheel {
 	// Create an array to hold the time wheels for each level.
+	// 创建一个数组来存储每个层级的时间轮。
 	levels := make([]*TimeWheel, 3)
 
 	// Initialize the time wheels for seconds, minutes, and hours.
+	// 初始化秒、分钟和小时的时间轮。
 	levels[LvSecond] = NewTimeWheel(SecondInterval, LvSecond, SecondScales)
 	levels[LvMinute] = NewTimeWheel(MinuteInterval, LvMinute, MinuteScales)
 	levels[LvHour] = NewTimeWheel(HourInterval, LvHour, HourScales)
 
 	// Register the overflow wheels. Each level's overflow wheel is the next higher level.
+	// 注册溢出轮。每个层级的溢出轮是下一个更高层级的时间轮。
 	for i := len(levels) - 1; i > 0; i-- {
 		levels[i-1].regOverflowWheel(levels[i])
 	}
 
-	// Return a new HierarchicalTimeWheel instance.
 	htw := &HierarchicalTimeWheel{
 		bottom: levels[LvSecond], // The bottom level is the second-level time wheel.
 		levels: levels,

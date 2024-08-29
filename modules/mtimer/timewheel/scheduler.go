@@ -27,10 +27,10 @@ import (
 // Scheduler 结构体，使用时间轮管理任务调度
 type Scheduler struct {
 	state    atomic.Uint32
-	htw      *HierarchicalTimeWheel
-	interval time.Duration
-	ticker   *time.Ticker
-	hfTicker *time.Ticker
+	htw      *HierarchicalTimeWheel // Hierarchical time wheel for managing timers
+	interval time.Duration          // Interval for the main ticker
+	ticker   *time.Ticker           // Main ticker for driving the time wheel
+	hfTicker *time.Ticker           // High-frequency ticker for checking timers
 	log      *mlog.ZapLogger
 	ch       unbounded.IUnbounded[Callback]
 	wg       sync.WaitGroup
@@ -52,10 +52,14 @@ func NewScheduler() *Scheduler {
 	return s
 }
 
+// Add adds a new task to the scheduler with the given delay and callback
+// Add 添加一个新的任务到调度器，使用给定的延迟和回调
 func (s *Scheduler) Add(delay time.Duration, callback func(...any), args ...any) (uint64, error) {
 	return s.htw.Add(delay, callback, args)
 }
 
+// Remove removes a task from the scheduler by its ID
+// Remove 通过任务 ID 从调度器中移除任务
 func (s *Scheduler) Remove(id uint64) {
 
 }
@@ -63,16 +67,24 @@ func (s *Scheduler) Remove(id uint64) {
 // Start starts the Scheduler, initiating the ticking
 // Start 启动 Scheduler，开始滴答
 func (s *Scheduler) Start() {
-	//启动过期检查定时器
+	// Start the high-frequency timer for checking timers
+	// 启动高频定时器以检查定时器
 	s.runCheckTimer()
-	//启动消费队列
+
+	// Start the consumer for handling callbacks
+	// 启动消费者以处理回调
 	s.runConsumer()
-	//启动时间轮Tick
+
+	// Start the main ticker for driving the time wheel
+	// 启动主定时器以驱动时间轮
 	s.runTicker()
 }
 
+// runTicker starts the main ticker and handles ticking
+// runTicker 启动主定时器并处理滴答
 func (s *Scheduler) runTicker() {
 	s.ticker = time.NewTicker(s.interval)
+	// 初始化主定时器
 	s.wg.Add(1)
 	go func() {
 		defer func() {
@@ -90,7 +102,10 @@ func (s *Scheduler) runTicker() {
 	}()
 }
 
+// runCheckTimer starts the high-frequency timer for checking timers
+// runCheckTimer 启动高频定时器以检查定时器
 func (s *Scheduler) runCheckTimer() {
+	// 初始化高频定时器
 	s.hfTicker = time.NewTicker(time.Millisecond * 100)
 	s.wg.Add(1)
 	go func() {
@@ -110,7 +125,7 @@ func (s *Scheduler) runCheckTimer() {
 }
 
 // GracefulStop stops the Scheduler, halting the ticking
-// GracefulStop 停止 Scheduler，停止滴
+// GracefulStop 停止 Scheduler，停止滴答
 func (s *Scheduler) GracefulStop(ctx context.Context) (err error) {
 	if s.state.CompareAndSwap(StateNormal, StateClosed) {
 		close(s.stop)
@@ -128,6 +143,8 @@ func (s *Scheduler) GracefulStop(ctx context.Context) (err error) {
 	return
 }
 
+// Stop stops the Scheduler immediately
+// Stop 立即停止 Scheduler
 func (s *Scheduler) Stop() {
 	if s.state.CompareAndSwap(StateNormal, StateClosed) {
 		close(s.stop)
@@ -151,6 +168,8 @@ func (s *Scheduler) Stop() {
 	return
 }
 
+// runConsumer starts the consumer for handling callbacks
+// runConsumer 启动消费者以处理回调
 func (s *Scheduler) runConsumer() {
 	go func() {
 		defer func() {
@@ -164,6 +183,8 @@ func (s *Scheduler) runConsumer() {
 	}()
 }
 
+// handleCB handles the callback for a task
+// handleCB 处理任务的回调
 func (s *Scheduler) handleCB(task Task) {
 	if task.expireAt.Before(time.Now()) {
 		s.log.Error("task exec timeout", zap.Duration("delay", time.Since(task.expireAt)))
