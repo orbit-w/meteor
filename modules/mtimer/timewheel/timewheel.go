@@ -15,13 +15,13 @@ import (
 */
 
 type HierarchicalTimeWheel struct {
-	stamp    int64
-	interval int64
-	idGen    atomic.Uint64
-	log      *mlog.ZapLogger
-	bottom   *TimeWheel
-	levels   []*TimeWheel
-	sender   func(t *Timer)
+	idGen  atomic.Uint64
+	ticker *time.Ticker
+	log    *mlog.ZapLogger
+	bottom *TimeWheel
+	levels []*TimeWheel
+	sender func(t *Timer)
+	stop   chan struct{}
 }
 
 // NewHierarchicalTimeWheel 创建一个分层时间轮
@@ -43,29 +43,22 @@ func NewHierarchicalTimeWheel(handleCB func(task Task)) *HierarchicalTimeWheel {
 	}
 
 	// Return a new HierarchicalTimeWheel instance.
-	return &HierarchicalTimeWheel{
-		stamp:    time.Now().UnixMilli(),
-		interval: SecondInterval,
-		bottom:   levels[LvSecond], // The bottom level is the second-level time wheel.
-		levels:   levels,
-		log:      mlog.NewLogger("hierarchical-time-wheel"),
+	htw := &HierarchicalTimeWheel{
+		bottom: levels[LvSecond], // The bottom level is the second-level time wheel.
+		levels: levels,
+		log:    mlog.NewLogger("hierarchical-time-wheel"),
+		stop:   make(chan struct{}, 1),
 		sender: func(t *Timer) {
 			// Define the sender function to handle tasks.
 			task := newTask(t.callback, time.Now().Add(taskTimeout))
 			handleCB(task)
 		},
 	}
+	htw.run()
+	return htw
 }
 
 func (htw *HierarchicalTimeWheel) tick() {
-	now := time.Now().UnixMilli()
-	if htw.stamp+htw.interval <= now {
-		htw.stamp = now
-	} else {
-		htw.bottom.tick(htw.sender, false)
-		return
-	}
-
 	var i int
 	//从最低级时间轮开始，依次向上执行检查，确定需要推进pos的轮截止位置
 	for lv := range htw.levels {
@@ -95,6 +88,12 @@ func (htw *HierarchicalTimeWheel) Add(delay time.Duration, callback func(...any)
 	return htw.bottom.AddTimer(task)
 }
 
+func (htw *HierarchicalTimeWheel) Stop() {
+	if htw.stop != nil {
+		close(htw.stop)
+	}
+}
+
 func (htw *HierarchicalTimeWheel) addTimer(t *Timer) {
 	//从最低级时间轮子添加任务
 	if err := htw.bottom.addWithoutLock(t); err != nil {
@@ -104,6 +103,23 @@ func (htw *HierarchicalTimeWheel) addTimer(t *Timer) {
 
 func (htw *HierarchicalTimeWheel) uniqueID() uint64 {
 	return htw.idGen.Add(1)
+}
+
+func (htw *HierarchicalTimeWheel) run() {
+	htw.ticker = time.NewTicker(time.Millisecond * 100)
+	go func() {
+		defer func() {
+			htw.ticker.Stop()
+		}()
+		for {
+			select {
+			case <-htw.ticker.C:
+				htw.bottom.tick(htw.sender, false)
+			case <-htw.stop:
+				return
+			}
+		}
+	}()
 }
 
 type TimeWheel struct {

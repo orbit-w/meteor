@@ -38,7 +38,7 @@ type Scheduler struct {
 func NewScheduler() *Scheduler {
 	s := new(Scheduler)
 	s.ch = unbounded.New[Callback](1024)
-	s.interval = time.Millisecond * 100
+	s.interval = time.Second
 	s.log = mlog.NewLogger("scheduler")
 	s.htw = NewHierarchicalTimeWheel(s.handleCB)
 	s.stop = make(chan struct{}, 1)
@@ -62,6 +62,7 @@ func (s *Scheduler) Start() {
 
 	go func() {
 		defer func() {
+			s.htw.Stop()
 			s.ch.Close()
 			s.ticker.Stop()
 		}()
