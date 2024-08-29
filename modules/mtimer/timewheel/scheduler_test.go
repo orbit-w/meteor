@@ -23,7 +23,7 @@ func TestScheduler_Add(t *testing.T) {
 	for index := 1; index < 10; index++ {
 		queue := make(chan bool, 1)
 		start := time.Now()
-		_ = s.Add(time.Duration(index)*time.Second, func(args ...any) {
+		_, _ = s.Add(time.Duration(index)*time.Second, func(args ...any) {
 			queue <- true
 		})
 

@@ -80,9 +80,9 @@ func (htw *HierarchicalTimeWheel) checkTimers() {
 	htw.bottom.tick(htw.sender, false)
 }
 
-func (htw *HierarchicalTimeWheel) Add(delay time.Duration, callback func(...any), args ...any) error {
-	task := newTimer(htw.uniqueID(), delay, newCallback(callback, args))
-	return htw.bottom.AddTimer(task)
+func (htw *HierarchicalTimeWheel) Add(delay time.Duration, callback func(...any), args ...any) (uint64, error) {
+	timer := newTimer(htw.uniqueID(), delay, newCallback(callback, args))
+	return timer.id, htw.bottom.AddTimer(timer)
 }
 
 func (htw *HierarchicalTimeWheel) addTimer(t *Timer) {

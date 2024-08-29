@@ -52,7 +52,7 @@ func NewScheduler() *Scheduler {
 	return s
 }
 
-func (s *Scheduler) Add(delay time.Duration, callback func(...any), args ...any) error {
+func (s *Scheduler) Add(delay time.Duration, callback func(...any), args ...any) (uint64, error) {
 	return s.htw.Add(delay, callback, args)
 }
 
