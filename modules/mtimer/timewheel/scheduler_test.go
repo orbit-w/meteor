@@ -17,7 +17,7 @@ func TestScheduler_Add(t *testing.T) {
 	s := NewScheduler()
 	s.Start()
 	defer func() {
-		_ = s.Stop(context.Background())
+		_ = s.GracefulStop(context.Background())
 	}()
 
 	for index := 1; index < 10; index++ {
@@ -40,7 +40,7 @@ func TestScheduler_AddSingle(t *testing.T) {
 	s := NewScheduler()
 	s.Start()
 	defer func() {
-		_ = s.Stop(context.Background())
+		_ = s.GracefulStop(context.Background())
 	}()
 	queue := make(chan bool, 1)
 	time.Sleep(time.Millisecond * 100)
@@ -61,7 +61,7 @@ func TestScheduler_Remove(t *testing.T) {
 	s := NewScheduler()
 	s.Start()
 	defer func() {
-		_ = s.Stop(context.Background())
+		_ = s.GracefulStop(context.Background())
 	}()
 
 	queue := make(chan bool, 1)

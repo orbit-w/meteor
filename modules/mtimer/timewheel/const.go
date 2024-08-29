@@ -13,6 +13,11 @@ const (
 )
 
 const (
+	StateNormal = iota
+	StateClosed
+)
+
+const (
 	LvSecond = iota
 	LvMinute
 	LvHour

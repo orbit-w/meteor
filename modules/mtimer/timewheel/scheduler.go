@@ -12,6 +12,8 @@ import (
 	"github.com/orbit-w/meteor/modules/mlog"
 	"github.com/orbit-w/meteor/modules/unbounded"
 	"go.uber.org/zap"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -24,13 +26,16 @@ import (
 // Scheduler struct that manages the scheduling of tasks using a TimeWheel
 // Scheduler 结构体，使用时间轮管理任务调度
 type Scheduler struct {
-	htw           *HierarchicalTimeWheel
-	interval      time.Duration
-	ticker        *time.Ticker
-	log           *mlog.ZapLogger
-	ch            unbounded.IUnbounded[Callback]
-	stop          chan struct{}
-	closeComplete chan struct{}
+	state    atomic.Uint32
+	htw      *HierarchicalTimeWheel
+	interval time.Duration
+	ticker   *time.Ticker
+	hfTicker *time.Ticker
+	log      *mlog.ZapLogger
+	ch       unbounded.IUnbounded[Callback]
+	wg       sync.WaitGroup
+	stop     chan struct{}
+	done     chan struct{}
 }
 
 // NewScheduler creates a new Scheduler with the given interval and scales
@@ -42,7 +47,8 @@ func NewScheduler() *Scheduler {
 	s.log = mlog.NewLogger("scheduler")
 	s.htw = NewHierarchicalTimeWheel(s.handleCB)
 	s.stop = make(chan struct{}, 1)
-	s.closeComplete = make(chan struct{}, 1)
+	s.done = make(chan struct{}, 1)
+	s.wg = sync.WaitGroup{}
 	return s
 }
 
@@ -57,14 +63,21 @@ func (s *Scheduler) Remove(id uint64) {
 // Start starts the Scheduler, initiating the ticking
 // Start 启动 Scheduler，开始滴答
 func (s *Scheduler) Start() {
-	s.ticker = time.NewTicker(s.interval)
+	//启动过期检查定时器
+	s.runCheckTimer()
+	//启动消费队列
 	s.runConsumer()
+	//启动时间轮Tick
+	s.runTicker()
+}
 
+func (s *Scheduler) runTicker() {
+	s.ticker = time.NewTicker(s.interval)
+	s.wg.Add(1)
 	go func() {
 		defer func() {
-			s.htw.Stop()
-			s.ch.Close()
 			s.ticker.Stop()
+			s.wg.Done()
 		}()
 		for {
 			select {
@@ -77,23 +90,71 @@ func (s *Scheduler) Start() {
 	}()
 }
 
-// Stop stops the Scheduler, halting the ticking
-// Stop 停止 Scheduler，停止滴
-func (s *Scheduler) Stop(ctx context.Context) error {
-	close(s.stop)
+func (s *Scheduler) runCheckTimer() {
+	s.hfTicker = time.NewTicker(time.Millisecond * 100)
+	s.wg.Add(1)
+	go func() {
+		defer func() {
+			s.hfTicker.Stop()
+			s.wg.Done()
+		}()
+		for {
+			select {
+			case <-s.hfTicker.C:
+				s.htw.checkTimers()
+			case <-s.stop:
+				return
+			}
+		}
+	}()
+}
 
-	select {
-	case <-ctx.Done():
-		return gerror.New("scheduler stopped failed", "err timeout")
-	case <-s.closeComplete:
-		return nil
+// GracefulStop stops the Scheduler, halting the ticking
+// GracefulStop 停止 Scheduler，停止滴
+func (s *Scheduler) GracefulStop(ctx context.Context) (err error) {
+	if s.state.CompareAndSwap(StateNormal, StateClosed) {
+		close(s.stop)
+		go func() {
+			s.wg.Wait()
+			s.ch.Close()
+		}()
+
+		select {
+		case <-ctx.Done():
+			err = gerror.New("scheduler stopped failed", "err timeout")
+		case <-s.done:
+		}
 	}
+	return
+}
+
+func (s *Scheduler) Stop() {
+	if s.state.CompareAndSwap(StateNormal, StateClosed) {
+		close(s.stop)
+		go func() {
+			s.wg.Wait()
+			s.ch.Close()
+		}()
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+
+		go func() {
+			defer func() {
+				cancel()
+			}()
+			select {
+			case <-ctx.Done():
+			case <-s.done:
+			}
+		}()
+	}
+	return
 }
 
 func (s *Scheduler) runConsumer() {
 	go func() {
 		defer func() {
-			close(s.closeComplete)
+			close(s.done)
 		}()
 
 		s.ch.Receive(func(msg Callback) (exit bool) {
