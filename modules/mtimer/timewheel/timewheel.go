@@ -49,6 +49,16 @@ func (tw *TimeWheel) AddTimer(t *Timer) error {
 	return tw.addWithoutLock(t)
 }
 
+func (tw *TimeWheel) RemoveTimer(id uint64) {
+	tw.mux.Lock()
+	defer tw.mux.Unlock()
+
+	for i := range tw.buckets {
+		bucket := tw.buckets[i]
+		bucket.Del(id)
+	}
+}
+
 func (tw *TimeWheel) addWithoutLock(t *Timer) error {
 	delayInterval := t.expireAt - time.Now().UnixMilli()
 	pos, circle := tw.calcPositionAndCircle(delayInterval)

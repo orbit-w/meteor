@@ -23,8 +23,19 @@ import (
    @2024 8月 周六 17:11
 */
 
-// Scheduler struct that manages the scheduling of tasks using a TimeWheel
-// Scheduler 结构体，使用时间轮管理任务调度
+type IScheduler interface {
+	Add(delay time.Duration, callback func(...any), args ...any) (uint64, error)
+	Remove(id uint64)
+	Start()
+
+	// GracefulStop stops the Scheduler gracefully, ensuring all pending tasks are executed before stopping.
+	// It waits for all running goroutines to finish and handles the context's timeout.
+	GracefulStop(ctx context.Context) error
+	Stop()
+}
+
+// Scheduler struct that manages the scheduling of tasks using Hierarchical Time Wheel
+// Scheduler 结构体，使用多层时间轮管理任务调度
 type Scheduler struct {
 	state    atomic.Uint32
 	htw      *HierarchicalTimeWheel // Hierarchical time wheel for managing timers
@@ -61,7 +72,7 @@ func (s *Scheduler) Add(delay time.Duration, callback func(...any), args ...any)
 // Remove removes a task from the scheduler by its ID
 // Remove 通过任务 ID 从调度器中移除任务
 func (s *Scheduler) Remove(id uint64) {
-
+	s.htw.Remove(id)
 }
 
 // Start starts the Scheduler, initiating the ticking
@@ -124,8 +135,14 @@ func (s *Scheduler) runCheckTimer() {
 	}()
 }
 
-// GracefulStop stops the Scheduler, halting the ticking
-// GracefulStop 停止 Scheduler，停止滴答
+// GracefulStop stops the Scheduler gracefully, ensuring all pending tasks are executed before stopping.
+// It waits for all running goroutines to finish and handles the context's timeout.
+//
+// Parameters:
+// - ctx: A context used to control the timeout for stopping the Scheduler.
+//
+// Returns:
+// - err: An error if the Scheduler fails to stop within the context's timeout.
 func (s *Scheduler) GracefulStop(ctx context.Context) (err error) {
 	if s.state.CompareAndSwap(StateNormal, StateClosed) {
 		close(s.stop)

@@ -88,6 +88,13 @@ func (htw *HierarchicalTimeWheel) Add(delay time.Duration, callback func(...any)
 	return timer.id, htw.bottom.AddTimer(timer)
 }
 
+func (htw *HierarchicalTimeWheel) Remove(id uint64) {
+	for i := range htw.levels {
+		tw := htw.levels[i]
+		tw.RemoveTimer(id)
+	}
+}
+
 func (htw *HierarchicalTimeWheel) addTimer(t *Timer) {
 	//从最低级时间轮子添加任务
 	if err := htw.bottom.addWithoutLock(t); err != nil {
