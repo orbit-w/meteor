@@ -3,6 +3,7 @@ package timewheel
 import (
 	"context"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
@@ -43,9 +44,8 @@ func TestScheduler_AddSingle(t *testing.T) {
 		_ = s.GracefulStop(context.Background())
 	}()
 	queue := make(chan bool, 1)
-	time.Sleep(time.Millisecond * 100)
 	start := time.Now()
-	s.Add(time.Duration(1)*time.Second, func(args ...any) {
+	_, _ = s.Add(time.Duration(1)*time.Second, func(args ...any) {
 		queue <- true
 	})
 
@@ -65,17 +65,20 @@ func TestScheduler_Remove(t *testing.T) {
 	}()
 
 	queue := make(chan bool, 1)
-	start := time.Now()
-	s.Add(1*time.Second, func(args ...any) {
+	id, err := s.Add(5*time.Second, func(args ...any) {
 		queue <- true
 	})
+	assert.NoError(t, err)
 
-	s.Remove(1)
+	s.Remove(id)
 
-	<-queue
-	if !checkTimeCost(t, start, time.Now(), 0, 200) {
+	select {
+	case <-queue:
 		t.Error("remove err")
+	case <-time.Tick(10 * time.Second):
+		fmt.Println("remove complete")
 	}
+
 }
 
 func checkTimeCost(t *testing.T, start, end time.Time, before int, after int) bool {
