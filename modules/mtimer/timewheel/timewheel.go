@@ -82,7 +82,7 @@ func (tw *TimeWheel) addWithoutLock(t *Timer) error {
 func (tw *TimeWheel) tick(handle func(t *Timer), forward bool) {
 	tw.mux.Lock()
 	defer tw.mux.Unlock()
-
+	um := time.Now().UnixMilli()
 	bucket := tw.buckets[tw.pos]
 	var diff int //heap 偏移量
 
@@ -96,6 +96,11 @@ func (tw *TimeWheel) tick(handle func(t *Timer), forward bool) {
 		if timer.round > 0 {
 			diff++
 			timer.round--
+			continue
+		}
+
+		if !forward && !timer.Expire(um) {
+			diff++
 			continue
 		}
 		bucket.Pop(diff)

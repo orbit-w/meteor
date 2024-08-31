@@ -44,6 +44,7 @@ func TestScheduler_AddSingle(t *testing.T) {
 		_ = s.GracefulStop(context.Background())
 	}()
 	queue := make(chan bool, 1)
+	time.Sleep(time.Millisecond * 900)
 	start := time.Now()
 	_, _ = s.Add(time.Duration(1)*time.Second, func(args ...any) {
 		queue <- true

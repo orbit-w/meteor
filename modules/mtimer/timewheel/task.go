@@ -48,6 +48,10 @@ func newTimer(_id uint64, _delay time.Duration, cb Callback) *Timer {
 	}
 }
 
+func (t *Timer) Expire(um int64) bool {
+	return t.expireAt <= um
+}
+
 type Task struct {
 	Id       uint64
 	cb       Callback
