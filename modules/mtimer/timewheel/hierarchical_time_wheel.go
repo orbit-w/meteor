@@ -3,17 +3,19 @@ package timewheel
 import (
 	"github.com/orbit-w/meteor/modules/mlog"
 	"go.uber.org/zap"
+	"sync"
 	"sync/atomic"
 	"time"
 )
 
 type HierarchicalTimeWheel struct {
+	mux    sync.Mutex
 	state  atomic.Uint32
 	idGen  atomic.Uint64
 	ticker *time.Ticker
 	log    *mlog.ZapLogger
-	bottom *TimeWheel
-	levels []*TimeWheel
+	bottom *TimingWheel
+	levels []*TimingWheel
 	sender func(t *Timer)
 	stop   chan struct{}
 }
@@ -26,13 +28,13 @@ type HierarchicalTimeWheel struct {
 func NewHierarchicalTimeWheel(handleCB func(task Task)) *HierarchicalTimeWheel {
 	// Create an array to hold the time wheels for each level.
 	// 创建一个数组来存储每个层级的时间轮。
-	levels := make([]*TimeWheel, 3)
+	levels := make([]*TimingWheel, 3)
 
 	// Initialize the time wheels for seconds, minutes, and hours.
 	// 初始化秒、分钟和小时的时间轮。
-	levels[LvSecond] = NewTimeWheel(SecondInterval, LvSecond, SecondScales)
-	levels[LvMinute] = NewTimeWheel(MinuteInterval, LvMinute, MinuteScales)
-	levels[LvHour] = NewTimeWheel(HourInterval, LvHour, HourScales)
+	levels[LvSecond] = NewTimingWheel(SecondInterval, LvSecond, SecondScales)
+	levels[LvMinute] = NewTimingWheel(MinuteInterval, LvMinute, MinuteScales)
+	levels[LvHour] = NewTimingWheel(HourInterval, LvHour, HourScales)
 
 	// Register the overflow wheels. Each level's overflow wheel is the next higher level.
 	// 注册溢出轮。每个层级的溢出轮是下一个更高层级的时间轮。
@@ -55,6 +57,8 @@ func NewHierarchicalTimeWheel(handleCB func(task Task)) *HierarchicalTimeWheel {
 }
 
 func (htw *HierarchicalTimeWheel) tick() {
+	htw.mux.Lock()
+	defer htw.mux.Unlock()
 	var i int
 	//从最低级时间轮开始，依次向上执行检查，确定需要推进pos的轮截止位置
 	for lv := range htw.levels {
@@ -80,15 +84,21 @@ func (htw *HierarchicalTimeWheel) tick() {
 }
 
 func (htw *HierarchicalTimeWheel) checkTimers() {
+	htw.mux.Lock()
+	defer htw.mux.Unlock()
 	htw.bottom.tick(htw.sender, false)
 }
 
 func (htw *HierarchicalTimeWheel) Add(delay time.Duration, callback func(...any), args ...any) (uint64, error) {
+	htw.mux.Lock()
+	defer htw.mux.Unlock()
 	timer := newTimer(htw.uniqueID(), delay, newCallback(callback, args))
 	return timer.id, htw.bottom.AddTimer(timer)
 }
 
 func (htw *HierarchicalTimeWheel) Remove(id uint64) {
+	htw.mux.Lock()
+	defer htw.mux.Unlock()
 	for i := range htw.levels {
 		tw := htw.levels[i]
 		tw.RemoveTimer(id)
@@ -97,8 +107,8 @@ func (htw *HierarchicalTimeWheel) Remove(id uint64) {
 
 func (htw *HierarchicalTimeWheel) addTimer(t *Timer) {
 	//从最低级时间轮子添加任务
-	if err := htw.bottom.addWithoutLock(t); err != nil {
-		htw.log.Error("addTimer timer to lowest time wheel failed", zap.Error(err))
+	if err := htw.bottom.AddTimer(t); err != nil {
+		htw.log.Error("regTimer timer to lowest time wheel failed", zap.Error(err))
 	}
 }
 
