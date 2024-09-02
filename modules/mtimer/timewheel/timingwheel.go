@@ -1,6 +1,7 @@
 package timewheel
 
 import (
+	"github.com/orbit-w/meteor/bases/misc/number_utils"
 	"time"
 )
 
@@ -51,11 +52,32 @@ func (tw *TimingWheel) regTimer(t *Timer, prev int64) error {
 	pos, circle := tw.calcPositionAndCircle(delayInterval, prev)
 	if circle > 0 {
 		if tw.overflowWheel == nil {
-			tw.overflowWheel = NewTimingWheel(tw.interval*tw.scales, tw.lv+1, tw.scales)
+			t.round = circle
+			tw.buckets[pos].Set(t)
+			return nil
+		} else {
+			prev = (tw.scales - tw.step - 1) * tw.interval
+			return tw.overflowWheel.regTimer(t, prev)
 		}
-		//当不是最高级时间轮时，将任务加入到下一级时间轮
-		prev = (tw.scales - tw.step - 1) * tw.interval
-		return tw.overflowWheel.regTimer(t, prev)
+	}
+
+	//将任务加入到当前时间轮
+	tw.buckets[pos].Set(t)
+	return nil
+}
+
+func (tw *TimingWheel) tickRegTimer(t *Timer, prev int64) error {
+	delayInterval := t.expireAt - time.Now().UnixMilli()
+	pos, circle := tw.calcPositionAndCircle(delayInterval, prev)
+	if circle > 0 {
+		if tw.overflowWheel == nil {
+			t.round = circle
+			tw.buckets[pos].Set(t)
+			return nil
+		} else {
+			prev = (tw.scales - tw.step - 1) * tw.interval
+			return tw.overflowWheel.regTimer(t, prev)
+		}
 	}
 
 	//将任务加入到当前时间轮
@@ -115,7 +137,7 @@ func (tw *TimingWheel) isBottom() bool {
 
 // delay 单位 ms
 func (tw *TimingWheel) calcPositionAndCircle(delay int64, prev int64) (pos int64, circle int64) {
-	step := (delay - prev) / tw.interval
+	step := (number_utils.Max[int64](delay-prev, 0)) / tw.interval
 	circle = step / tw.scales
 	pos = (tw.step + step) % tw.scales
 	return

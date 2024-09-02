@@ -65,7 +65,7 @@ func (tw *TimeWheel) addWithoutLock(t *Timer) error {
 	if circle > 0 {
 		if tw.overflowWheel == nil {
 			//当处于最高级时间轮时，将任务加入到当前时间轮
-			t.round = circle
+			//t.round = circle
 			tw.buckets[pos].Set(t)
 			return nil
 		} else {

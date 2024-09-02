@@ -15,6 +15,13 @@ func Min[T common.Integer](a, b T) T {
 	return b
 }
 
+func Max[T common.Integer](a, b T) T {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 func ABS[T common.Integer](v T) T {
 	if v < 0 {
 		return -v
