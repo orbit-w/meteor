@@ -107,7 +107,7 @@ func (htw *HierarchicalTimeWheel) Remove(id uint64) {
 
 func (htw *HierarchicalTimeWheel) addTimer(t *Timer) {
 	//从最低级时间轮子添加任务
-	if err := htw.bottom.tickRegTimer(t, 0); err != nil {
+	if err := htw.bottom.regTimer(t, 0); err != nil {
 		htw.log.Error("regTimer timer to lowest time wheel failed", zap.Error(err))
 	}
 }

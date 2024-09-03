@@ -2,7 +2,6 @@ package timewheel
 
 import (
 	"github.com/orbit-w/meteor/bases/misc/number_utils"
-	"time"
 )
 
 type TimingWheel struct {
@@ -48,11 +47,12 @@ func (tw *TimingWheel) regOverflowWheel(overflowWheel *TimingWheel) {
 }
 
 func (tw *TimingWheel) regTimer(t *Timer, prev int64) error {
-	delayInterval := t.expireAt - time.Now().UnixMilli()
-	pos, circle := tw.calcPositionAndCircle(delayInterval, prev)
+	pos, circle := tw.calcPositionAndCircle(t.um, prev)
 	if circle > 0 {
 		if tw.overflowWheel == nil {
 			t.round = circle
+			d := (circle*tw.scales+pos)*tw.interval + prev
+			t.um -= d
 			tw.buckets[pos].Set(t)
 			return nil
 		} else {
@@ -62,25 +62,7 @@ func (tw *TimingWheel) regTimer(t *Timer, prev int64) error {
 	}
 
 	//将任务加入到当前时间轮
-	tw.buckets[pos].Set(t)
-	return nil
-}
-
-func (tw *TimingWheel) tickRegTimer(t *Timer, prev int64) error {
-	delayInterval := t.expireAt - time.Now().UnixMilli()
-	pos, circle := tw.calcPositionAndCircle(delayInterval, prev)
-	if circle > 0 {
-		if tw.overflowWheel == nil {
-			t.round = circle
-			tw.buckets[pos].Set(t)
-			return nil
-		} else {
-			prev = (tw.scales - tw.step - 1) * tw.interval
-			return tw.overflowWheel.regTimer(t, prev)
-		}
-	}
-
-	//将任务加入到当前时间轮
+	t.um -= pos*tw.interval + prev
 	tw.buckets[pos].Set(t)
 	return nil
 }

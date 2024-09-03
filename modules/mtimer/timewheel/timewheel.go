@@ -60,7 +60,7 @@ func (tw *TimeWheel) RemoveTimer(id uint64) {
 }
 
 func (tw *TimeWheel) addWithoutLock(t *Timer) error {
-	delayInterval := t.expireAt - time.Now().UnixMilli()
+	delayInterval := t.um - time.Now().UnixMilli()
 	pos, circle := tw.calcPositionAndCircle(delayInterval)
 	if circle > 0 {
 		if tw.overflowWheel == nil {

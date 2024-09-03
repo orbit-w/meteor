@@ -34,7 +34,7 @@ func (cb *Callback) Exec() {
 type Timer struct {
 	id       uint64
 	delay    time.Duration //延迟时间
-	expireAt int64         //时间戳，单位是ms
+	um       int64         //时间戳，单位是ms
 	round    int64
 	callback Callback
 }
@@ -44,7 +44,7 @@ func newTimer(_id uint64, _delay time.Duration, cb Callback) *Timer {
 		id:       _id,
 		delay:    _delay,
 		callback: cb,
-		expireAt: time.Now().Add(_delay).UnixMilli(),
+		um:       _delay.Milliseconds(),
 	}
 }
 
