@@ -5,12 +5,12 @@ type TimingWheel struct {
 	scales        int64 //刻度数
 	upperInterval int64 //上一级时间轮的刻度间隔
 	step          int64 //当前时间指针的指向
-	lv            int   //多维时间轮索引
+	lv            int64 //多维时间轮索引
 	buckets       []*Bucket
 	overflowWheel *TimingWheel
 }
 
-func NewTimingWheel(interval int64, lv int, scales int64) *TimingWheel {
+func NewTimingWheel(interval int64, lv int64, scales int64) *TimingWheel {
 	tw := &TimingWheel{
 		interval: interval,
 		lv:       lv,
@@ -19,21 +19,23 @@ func NewTimingWheel(interval int64, lv int, scales int64) *TimingWheel {
 	}
 
 	for i := int64(0); i < scales; i++ {
-		tw.buckets[i] = newBucket()
+		tw.buckets[i] = newBucket(i)
 	}
 
 	return tw
 }
 
-func (tw *TimingWheel) AddTimer(t *Timer) error {
+func (tw *TimingWheel) Add(t *Timer) error {
 	return tw.regTimer(t)
 }
 
-func (tw *TimingWheel) RemoveTimer(id uint64) {
-	for i := range tw.buckets {
-		bucket := tw.buckets[i]
-		bucket.Del(id)
-	}
+func (tw *TimingWheel) Update(t *Timer) {
+
+}
+
+func (tw *TimingWheel) Remove(t *Timer) {
+	b := tw.buckets[t.bIndex]
+	b.Del(t.id)
 }
 
 // regOverflowWheel 注册下一级时间轮
@@ -47,7 +49,7 @@ func (tw *TimingWheel) regTimer(t *Timer) error {
 	if circle > 0 {
 		if tw.overflowWheel == nil {
 			t.round = circle
-			tw.setBucket(t, pos, step)
+			tw.setByBucket(t, pos, step)
 			return nil
 		} else {
 			t.delay -= tw.calcDelayAdjustment()
@@ -56,7 +58,7 @@ func (tw *TimingWheel) regTimer(t *Timer) error {
 	}
 
 	//将任务加入到当前时间轮
-	tw.setBucket(t, pos, step)
+	tw.setByBucket(t, pos, step)
 	return nil
 }
 
@@ -91,9 +93,11 @@ func (tw *TimingWheel) tick(cmd Command, forward bool) {
 
 // setBucket 设置定时器到指定的bucket
 // setBucket sets the timer to the specified bucket
-func (tw *TimingWheel) setBucket(t *Timer, pos, step int64) {
+func (tw *TimingWheel) setByBucket(t *Timer, pos, step int64) {
 	//计算定时器的延迟时间
 	t.delay -= step * tw.interval
+	t.setBucketIndex(pos)
+	t.setTimeWheelIndex(tw.lv)
 	tw.buckets[pos].Set(t)
 }
 

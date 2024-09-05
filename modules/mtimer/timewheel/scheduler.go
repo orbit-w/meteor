@@ -42,6 +42,7 @@ type Scheduler struct {
 	idGen    atomic.Uint64
 	bottom   *TimingWheel
 	htw      []*TimingWheel
+	cache    map[uint64]*Timer
 	interval time.Duration // Interval for the main ticker
 	ticker   *time.Ticker  // Main ticker for driving the time wheel
 	hfTicker *time.Ticker  // High-frequency ticker for checking timers
@@ -79,6 +80,7 @@ func NewScheduler() *Scheduler {
 		done:     make(chan struct{}, 1),
 		log:      mlog.NewLogger("scheduler"),
 		wg:       sync.WaitGroup{},
+		cache:    make(map[uint64]*Timer),
 	}
 	return s
 }
@@ -89,7 +91,11 @@ func (s *Scheduler) Add(delay time.Duration, callback func(...any), args ...any)
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	timer := newTimer(s.uniqueID(), delay, newCallback(callback, args))
-	return timer.id, s.bottom.AddTimer(timer)
+	if err := s.bottom.Add(timer); err != nil {
+		return 0, err
+	}
+	s.cache[timer.id] = timer
+	return timer.id, nil
 }
 
 // Remove removes a task from the scheduler by its ID
@@ -97,9 +103,9 @@ func (s *Scheduler) Add(delay time.Duration, callback func(...any), args ...any)
 func (s *Scheduler) Remove(id uint64) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
-	for i := range s.htw {
-		tw := s.htw[i]
-		tw.RemoveTimer(id)
+	if t, ok := s.cache[id]; ok {
+		s.htw[t.twIndex].Remove(t)
+		delete(s.cache, id)
 	}
 }
 
@@ -265,6 +271,7 @@ func (s *Scheduler) handleTimer(t *Timer) (success bool) {
 	if err := s.ch.Send(task); err != nil {
 		s.log.Error("send callback failed", zap.Error(err))
 	}
+	delete(s.cache, t.id)
 	return true
 }
 

@@ -9,15 +9,24 @@ import "github.com/orbit-w/meteor/bases/container/linked_list"
 */
 
 type Bucket struct {
+	index int64
 	list  *linked_list.LinkedList[uint64, *Timer]
 	tasks map[uint64]*linked_list.Entry[uint64, *Timer]
 }
 
-func newBucket() *Bucket {
+func newBucket(i int64) *Bucket {
 	return &Bucket{
+		index: i,
 		list:  linked_list.New[uint64, *Timer](),
 		tasks: make(map[uint64]*linked_list.Entry[uint64, *Timer]),
 	}
+}
+
+func (b *Bucket) GetIndex() int64 {
+	if b == nil {
+		return 0
+	}
+	return b.index
 }
 
 func (b *Bucket) Set(task *Timer) {
@@ -28,16 +37,18 @@ func (b *Bucket) Set(task *Timer) {
 	b.tasks[task.id] = ent
 }
 
-func (b *Bucket) Del(taskID uint64) {
+func (b *Bucket) Del(taskID uint64) bool {
 	if b == nil {
-		return
+		return false
 	}
 
 	ent := b.tasks[taskID]
 	if ent != nil {
 		b.list.Remove(ent)
 		delete(b.tasks, taskID)
+		return true
 	}
+	return false
 }
 
 func (b *Bucket) Peek(i int) *Timer {
