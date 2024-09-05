@@ -30,9 +30,9 @@ func TestScheduler_Add(t *testing.T) {
 
 		<-queue
 
-		//before := index*1000 - 200
-		//after := index*1000 + 200
-		//checkTimeCost(t, start, time.Now(), before, after)
+		before := index*1000 - 200
+		after := index*1000 + 200
+		checkTimeCost(t, start, time.Now(), before, after)
 		fmt.Println("time since: ", time.Since(start).String())
 	}
 }
@@ -45,7 +45,7 @@ func TestScheduler_AddSingle(t *testing.T) {
 	}()
 	queue := make(chan bool, 1)
 	start := time.Now()
-	_, _ = s.Add(time.Duration(1)*time.Minute+time.Second*7, func(args ...any) {
+	_, _ = s.Add(time.Duration(59)*time.Second, func(args ...any) {
 		queue <- true
 	})
 

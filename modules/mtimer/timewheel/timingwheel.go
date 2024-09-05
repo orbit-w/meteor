@@ -1,9 +1,5 @@
 package timewheel
 
-import (
-	"github.com/orbit-w/meteor/bases/misc/number_utils"
-)
-
 type TimingWheel struct {
 	interval      int64 //刻度的时间间隔,最高精度是毫秒
 	scales        int64 //刻度数
@@ -30,7 +26,7 @@ func NewTimingWheel(interval int64, lv int, scales int64) *TimingWheel {
 }
 
 func (tw *TimingWheel) AddTimer(t *Timer) error {
-	return tw.regTimer(t, 0)
+	return tw.regTimer(t)
 }
 
 func (tw *TimingWheel) RemoveTimer(id uint64) {
@@ -46,24 +42,21 @@ func (tw *TimingWheel) regOverflowWheel(overflowWheel *TimingWheel) {
 	tw.overflowWheel = overflowWheel
 }
 
-func (tw *TimingWheel) regTimer(t *Timer, prev int64) error {
-	pos, circle := tw.calcPositionAndCircle(t.um, prev)
+func (tw *TimingWheel) regTimer(t *Timer) error {
+	step, pos, circle := tw.calcPositionAndCircle(t.delay)
 	if circle > 0 {
 		if tw.overflowWheel == nil {
 			t.round = circle
-			d := (circle*tw.scales+pos)*tw.interval + prev
-			t.um -= d
-			tw.buckets[pos].Set(t)
+			tw.setBucket(t, pos, step)
 			return nil
 		} else {
-			prev = (tw.scales - tw.step - 1) * tw.interval
-			return tw.overflowWheel.regTimer(t, prev)
+			t.delay -= tw.calcDelayAdjustment()
+			return tw.overflowWheel.regTimer(t)
 		}
 	}
 
 	//将任务加入到当前时间轮
-	t.um -= pos*tw.interval + prev
-	tw.buckets[pos].Set(t)
+	tw.setBucket(t, pos, step)
 	return nil
 }
 
@@ -93,33 +86,17 @@ func (tw *TimingWheel) tick(handle func(t *Timer), forward bool) {
 	}
 }
 
-func (tw *TimingWheel) isTop() bool {
-	return tw.overflowWheel == nil
-}
-
-func (tw *TimingWheel) Range(handle func(tw *TimingWheel) (stop bool)) {
-	if !tw.isTop() {
-		return
-	}
-	var temp = tw
-	for {
-		if temp == nil {
-			break
-		}
-		if handle(temp) {
-			break
-		}
-		temp = tw.overflowWheel
-	}
-}
-
-func (tw *TimingWheel) isBottom() bool {
-	return tw.lv == 0
+// setBucket 设置定时器到指定的bucket
+// setBucket sets the timer to the specified bucket
+func (tw *TimingWheel) setBucket(t *Timer, pos, step int64) {
+	//计算定时器的延迟时间
+	t.delay -= step * tw.interval
+	tw.buckets[pos].Set(t)
 }
 
 // delay 单位 ms
-func (tw *TimingWheel) calcPositionAndCircle(delay int64, prev int64) (pos int64, circle int64) {
-	step := (number_utils.Max[int64](delay-prev, 0)) / tw.interval
+func (tw *TimingWheel) calcPositionAndCircle(delay int64) (step, pos, circle int64) {
+	step = delay / tw.interval
 	circle = step / tw.scales
 	pos = (tw.step + step) % tw.scales
 	return
@@ -127,4 +104,10 @@ func (tw *TimingWheel) calcPositionAndCircle(delay int64, prev int64) (pos int64
 
 func (tw *TimingWheel) movingForward() bool {
 	return (tw.step+1)%tw.scales == 0
+}
+
+// calcDelayAdjustment 计算延迟调整值
+// calcDelayAdjustment calculates the delay adjustment value
+func (tw *TimingWheel) calcDelayAdjustment() int64 {
+	return (tw.scales - tw.step - 1) * tw.interval
 }

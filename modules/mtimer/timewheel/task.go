@@ -33,8 +33,7 @@ func (cb *Callback) Exec() {
 
 type Timer struct {
 	id       uint64
-	delay    time.Duration //延迟时间
-	um       int64         //时间戳，单位是ms
+	delay    int64 //时间戳，单位是ms
 	round    int64
 	callback Callback
 }
@@ -42,9 +41,8 @@ type Timer struct {
 func newTimer(_id uint64, _delay time.Duration, cb Callback) *Timer {
 	return &Timer{
 		id:       _id,
-		delay:    _delay,
 		callback: cb,
-		um:       _delay.Milliseconds(),
+		delay:    _delay.Milliseconds(),
 	}
 }
 
