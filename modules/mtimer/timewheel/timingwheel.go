@@ -60,7 +60,7 @@ func (tw *TimingWheel) regTimer(t *Timer) error {
 	return nil
 }
 
-func (tw *TimingWheel) tick(handle func(t *Timer), forward bool) {
+func (tw *TimingWheel) tick(cmd Command, forward bool) {
 	bucket := tw.buckets[tw.step]
 	var diff int //heap 偏移量
 
@@ -76,8 +76,11 @@ func (tw *TimingWheel) tick(handle func(t *Timer), forward bool) {
 			timer.round--
 			continue
 		}
-		bucket.Pop(diff)
-		handle(timer)
+		if cmd(timer) {
+			bucket.Pop(diff)
+		} else {
+			diff++
+		}
 	}
 
 	if forward {

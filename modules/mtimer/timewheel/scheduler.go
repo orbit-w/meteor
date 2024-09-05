@@ -46,7 +46,7 @@ type Scheduler struct {
 	ticker   *time.Ticker  // Main ticker for driving the time wheel
 	hfTicker *time.Ticker  // High-frequency ticker for checking timers
 	log      *mlog.ZapLogger
-	ch       unbounded.IUnbounded[Callback]
+	ch       unbounded.IUnbounded[Task]
 	wg       sync.WaitGroup
 	stop     chan struct{}
 	done     chan struct{}
@@ -72,7 +72,7 @@ func NewScheduler() *Scheduler {
 	}
 	s := &Scheduler{
 		bottom:   htw[LvSecond], // The bottom level is the second-level time wheel.
-		ch:       unbounded.New[Callback](1024),
+		ch:       unbounded.New[Task](1024),
 		interval: time.Second,
 		htw:      htw,
 		stop:     make(chan struct{}, 1),
@@ -137,10 +137,12 @@ func (s *Scheduler) tick() {
 	for lv := i; lv >= 0; lv-- {
 		tw := s.htw[lv]
 		//Bottom time wheel 将任务加入到顺序执行队列
-		var h = s.handleTimer
+		var h Command
 		if lv != LvSecond {
 			//高级时间轮的任务是将任务加入到最底层时间轮
 			h = s.addTimer
+		} else {
+			h = s.handleTimer
 		}
 		tw.tick(h, true)
 	}
@@ -246,23 +248,24 @@ func (s *Scheduler) Stop() {
 	return
 }
 
-func (s *Scheduler) addTimer(t *Timer) {
+func (s *Scheduler) addTimer(t *Timer) (success bool) {
 	//从最低级时间轮子添加任务
 	if err := s.bottom.regTimer(t); err != nil {
 		s.log.Error("regTimer timer to lowest time wheel failed", zap.Error(err))
 	}
+	return true
 }
 
-func (s *Scheduler) handleTimer(t *Timer) {
-	// Define the sender function to handle tasks.
-	task := newTask(t.callback, time.Now().Add(taskTimeout))
-	if task.expireAt.Before(time.Now()) {
-		s.log.Error("task exec timeout", zap.Duration("delay", time.Since(task.expireAt)))
-		return
+func (s *Scheduler) handleTimer(t *Timer) (success bool) {
+	if !t.Expired(time.Now()) {
+		return false
 	}
-	if err := s.ch.Send(task.cb); err != nil {
+	// Define the sender function to handle tasks.
+	task := newTask(t.callback)
+	if err := s.ch.Send(task); err != nil {
 		s.log.Error("send callback failed", zap.Error(err))
 	}
+	return true
 }
 
 // runConsumer starts the consumer for handling callbacks
@@ -273,8 +276,12 @@ func (s *Scheduler) runConsumer() {
 			close(s.done)
 		}()
 
-		s.ch.Receive(func(msg Callback) (exit bool) {
-			msg.Exec()
+		s.ch.Receive(func(t Task) (exit bool) {
+			if t.Expired() {
+				s.log.Error("task exec timeout", zap.Duration("delay", time.Since(t.expireAt)))
+				return
+			}
+			t.cb.Exec()
 			return
 		})
 	}()

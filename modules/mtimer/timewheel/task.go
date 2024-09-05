@@ -35,6 +35,7 @@ type Timer struct {
 	id       uint64
 	delay    int64 //时间戳，单位是ms
 	round    int64
+	expireAt int64
 	callback Callback
 }
 
@@ -43,7 +44,12 @@ func newTimer(_id uint64, _delay time.Duration, cb Callback) *Timer {
 		id:       _id,
 		callback: cb,
 		delay:    _delay.Milliseconds(),
+		expireAt: time.Now().Add(_delay).UnixNano(),
 	}
+}
+
+func (t *Timer) Expired(cur time.Time) bool {
+	return t.expireAt <= cur.UnixNano()
 }
 
 type Task struct {
@@ -52,9 +58,15 @@ type Task struct {
 	expireAt time.Time
 }
 
-func newTask(cb Callback, expireAt time.Time) Task {
+func newTask(cb Callback) Task {
 	return Task{
 		cb:       cb,
-		expireAt: expireAt,
+		expireAt: time.Now().Add(taskTimeout),
 	}
 }
+
+func (t *Task) Expired() bool {
+	return time.Now().After(t.expireAt)
+}
+
+type Command func(*Timer) (success bool)
