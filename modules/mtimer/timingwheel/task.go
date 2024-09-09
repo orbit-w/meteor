@@ -32,34 +32,18 @@ func (cb *Callback) Exec() {
 }
 
 type Timer struct {
-	id       uint64
-	bIndex   int64 //bucket id
-	twIndex  int64 //time wheel id
-	delay    int64 //时间戳，单位是ms
-	round    int64
-	expireAt int64
-	callback Callback
+	id         uint64
+	bIndex     int64 //bucket id
+	expiration int64
+	callback   Callback
 }
 
 func newTimer(_id uint64, _delay time.Duration, cb Callback) *Timer {
 	return &Timer{
-		id:       _id,
-		callback: cb,
-		delay:    _delay.Milliseconds(),
-		expireAt: time.Now().Add(_delay).UnixNano(),
+		id:         _id,
+		callback:   cb,
+		expiration: time.Now().UTC().Add(_delay).UnixMilli(),
 	}
-}
-
-func (t *Timer) setBucketIndex(i int64) {
-	t.bIndex = i
-}
-
-func (t *Timer) setTimeWheelIndex(i int64) {
-	t.twIndex = i
-}
-
-func (t *Timer) Expired(cur time.Time) bool {
-	return t.expireAt <= cur.UnixNano()
 }
 
 type Task struct {

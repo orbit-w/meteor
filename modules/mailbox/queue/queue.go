@@ -8,7 +8,7 @@ import (
 // Lock-Free Queue provides an efficient implementation of a multi-producer,
 // single-consumer queue queue.
 //
-// The Push function is safe to call from multiple goroutines. The Pop and Empty APIs must only be
+// The Push function is safe to call from multiple goroutines. The pop and Empty APIs must only be
 // called from a single, consumer goroutine.
 
 // Thanks https://github.com/asynkron/protoactor-go

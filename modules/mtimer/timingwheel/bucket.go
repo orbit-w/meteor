@@ -1,6 +1,10 @@
 package timewheel
 
-import "github.com/orbit-w/meteor/bases/container/linked_list"
+import (
+	"github.com/orbit-w/meteor/bases/container/linked_list"
+	"sync"
+	"sync/atomic"
+)
 
 /*
    @Author: orbit-w
@@ -9,27 +13,20 @@ import "github.com/orbit-w/meteor/bases/container/linked_list"
 */
 
 type Bucket struct {
-	index int64
-	list  *linked_list.LinkedList[uint64, *Timer]
-	tasks map[uint64]*linked_list.Entry[uint64, *Timer]
+	expiration atomic.Int64
+	mu         sync.Mutex
+	list       *linked_list.LinkedList[uint64, *Timer]
+	tasks      map[uint64]*linked_list.Entry[uint64, *Timer]
 }
 
-func newBucket(i int64) *Bucket {
+func newBucket() *Bucket {
 	return &Bucket{
-		index: i,
 		list:  linked_list.New[uint64, *Timer](),
 		tasks: make(map[uint64]*linked_list.Entry[uint64, *Timer]),
 	}
 }
 
-func (b *Bucket) GetIndex() int64 {
-	if b == nil {
-		return 0
-	}
-	return b.index
-}
-
-func (b *Bucket) Set(task *Timer) {
+func (b *Bucket) Add(task *Timer) {
 	if b == nil {
 		return
 	}
@@ -37,7 +34,7 @@ func (b *Bucket) Set(task *Timer) {
 	b.tasks[task.id] = ent
 }
 
-func (b *Bucket) Del(taskID uint64) bool {
+func (b *Bucket) Remove(taskID uint64) bool {
 	if b == nil {
 		return false
 	}
@@ -51,30 +48,15 @@ func (b *Bucket) Del(taskID uint64) bool {
 	return false
 }
 
-func (b *Bucket) Peek(i int) *Timer {
-	if b == nil {
-		return nil
-	}
-	ent := b.list.RPeekAt(i)
-	if ent == nil {
-		return nil
-	}
-
-	return ent.Value
+func (b *Bucket) Expiration() int64 {
+	return b.expiration.Load()
 }
 
-func (b *Bucket) Pop(i int) *Timer {
+func (b *Bucket) setExpiration(expiration int64) bool {
 	if b == nil {
-		return nil
+		return false
 	}
-	ent := b.list.RPopAt(i)
-	if ent == nil {
-		return nil
-	}
-
-	task := ent.Value
-	delete(b.tasks, task.id)
-	return task
+	return b.expiration.Swap(expiration) != expiration
 }
 
 func (b *Bucket) Len() int {
@@ -97,15 +79,41 @@ func (b *Bucket) Range(cmd func(t *Timer) bool) {
 
 	//取出当前时间轮指针指向的刻度上的所有定时器
 	for {
-		timer := b.Peek(diff)
+		timer := b.peek(diff)
 		if timer == nil {
 			break
 		}
 
 		if cmd(timer) {
-			b.Pop(diff)
+			b.pop(diff)
 		} else {
 			diff++
 		}
 	}
+}
+
+func (b *Bucket) peek(i int) *Timer {
+	if b == nil {
+		return nil
+	}
+	ent := b.list.RPeekAt(i)
+	if ent == nil {
+		return nil
+	}
+
+	return ent.Value
+}
+
+func (b *Bucket) pop(i int) *Timer {
+	if b == nil {
+		return nil
+	}
+	ent := b.list.RPopAt(i)
+	if ent == nil {
+		return nil
+	}
+
+	task := ent.Value
+	delete(b.tasks, task.id)
+	return task
 }

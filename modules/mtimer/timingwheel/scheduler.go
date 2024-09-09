@@ -11,7 +11,6 @@ import (
 	"github.com/orbit-w/meteor/bases/misc/gerror"
 	"github.com/orbit-w/meteor/modules/mlog"
 	"github.com/orbit-w/meteor/modules/unbounded"
-	"go.uber.org/zap"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -53,7 +52,7 @@ type Scheduler struct {
 }
 
 func NewScheduler() *Scheduler {
-	tw := NewTimingWheel(1, 0, 60)
+	tw := NewTimingWheel(time.Millisecond, 20)
 	s := &Scheduler{
 		timingWheel: tw, // The timingWheel level is the second-level time wheel.
 		ch:          unbounded.New[Task](1024),
@@ -89,47 +88,11 @@ func (s *Scheduler) Remove(id uint64) {
 // Start starts the Scheduler, initiating the ticking
 // Start 启动 Scheduler，开始滴答
 func (s *Scheduler) Start() {
-	// Start the consumer for handling callbacks
-	// 启动消费者以处理回调
-	s.runConsumer()
 
-	// Start the main ticker for driving the time wheel
-	// 启动主定时器以驱动时间轮
-	s.runTicker()
 }
 
 func (s *Scheduler) tick() {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-	//从最低级时间轮开始，依次向上执行检查，确定需要推进pos的轮截止位置
-	tws := make([]*TimingWheel, 0)
-	for tw := s.timingWheel; ; {
-		if !tw.movingForward() {
-			break
-		}
-		tws = append(tws, tw)
-		tw = tw.overflowWheel
-	}
 
-	if len(tws) == 0 {
-
-		return
-	}
-
-	//从最顶层的时间轮开始，依次向下执行tick。
-	//必须优先高级时间轮的到期任务转移到最底层时间轮,最后去执行bottom.tick, 这样会确保此类任务在这次tick中在bottom被执行。
-	for i := len(tws); i >= 0; i-- {
-		tw := tws[i]
-		//Bottom time wheel 将任务加入到顺序执行队列
-		var h Command
-		if i != LvSecond {
-			//高级时间轮的任务是将任务加入到最底层时间轮
-			h = s.addTimer
-		} else {
-			h = s.handleTimer
-		}
-		tw.tick(h, true)
-	}
 }
 
 func (s *Scheduler) advance() {
@@ -209,43 +172,7 @@ func (s *Scheduler) Stop() {
 }
 
 func (s *Scheduler) addTimer(t *Timer) (success bool) {
-	//从最低级时间轮子添加任务
-	if err := s.timingWheel.regTimer(t); err != nil {
-		s.log.Error("regTimer timer to lowest time wheel failed", zap.Error(err))
-	}
 	return true
-}
-
-func (s *Scheduler) handleTimer(t *Timer) (success bool) {
-	if !t.Expired(time.Now()) {
-		return false
-	}
-	// Define the sender function to handle tasks.
-	task := newTask(t.callback)
-	if err := s.ch.Send(task); err != nil {
-		s.log.Error("send callback failed", zap.Error(err))
-	}
-	delete(s.cache, t.id)
-	return true
-}
-
-// runConsumer starts the consumer for handling callbacks
-// runConsumer 启动消费者以处理回调
-func (s *Scheduler) runConsumer() {
-	go func() {
-		defer func() {
-			close(s.done)
-		}()
-
-		s.ch.Receive(func(t Task) (exit bool) {
-			if t.Expired() {
-				s.log.Error("task exec timeout", zap.Duration("delay", time.Since(t.expireAt)))
-				return
-			}
-			t.cb.Exec()
-			return
-		})
-	}()
 }
 
 func (s *Scheduler) uniqueID() uint64 {
