@@ -27,18 +27,15 @@ func newBucket() *Bucket {
 }
 
 func (b *Bucket) Add(task *Timer) {
-	if b == nil {
-		return
-	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	ent := b.list.LPush(task.id, task)
 	b.tasks[task.id] = ent
 }
 
 func (b *Bucket) Remove(taskID uint64) bool {
-	if b == nil {
-		return false
-	}
-
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	ent := b.tasks[taskID]
 	if ent != nil {
 		b.list.Remove(ent)
@@ -53,28 +50,12 @@ func (b *Bucket) Expiration() int64 {
 }
 
 func (b *Bucket) setExpiration(expiration int64) bool {
-	if b == nil {
-		return false
-	}
 	return b.expiration.Swap(expiration) != expiration
 }
 
-func (b *Bucket) Len() int {
-	if b == nil {
-		return 0
-	}
-	return b.list.Len()
-}
-
-func (b *Bucket) Free() {
-	if b == nil {
-		return
-	}
-	b.list = linked_list.New[uint64, *Timer]()
-	b.tasks = make(map[uint64]*linked_list.Entry[uint64, *Timer])
-}
-
 func (b *Bucket) Range(cmd func(t *Timer) bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	var diff int //heap 偏移量
 
 	//取出当前时间轮指针指向的刻度上的所有定时器
@@ -93,9 +74,6 @@ func (b *Bucket) Range(cmd func(t *Timer) bool) {
 }
 
 func (b *Bucket) peek(i int) *Timer {
-	if b == nil {
-		return nil
-	}
 	ent := b.list.RPeekAt(i)
 	if ent == nil {
 		return nil
@@ -105,9 +83,6 @@ func (b *Bucket) peek(i int) *Timer {
 }
 
 func (b *Bucket) pop(i int) *Timer {
-	if b == nil {
-		return nil
-	}
 	ent := b.list.RPopAt(i)
 	if ent == nil {
 		return nil
