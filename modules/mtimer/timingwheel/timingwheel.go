@@ -1,6 +1,7 @@
 package timewheel
 
 import (
+	"github.com/orbit-w/meteor/modules/mlog"
 	"github.com/orbit-w/meteor/modules/mtimer/timingwheel/delayqueue"
 	"time"
 )
@@ -15,19 +16,26 @@ type TimingWheel struct {
 	buckets       []*Bucket
 	queue         *delayqueue.DelayQueue
 	overflowWheel *TimingWheel
+	handler       func(t *Timer) error
+	log           *mlog.ZapLogger
 }
 
-func NewTimingWheel(tick time.Duration, wheelSize int64) *TimingWheel {
+func NewTimingWheel(tick time.Duration, wheelSize int64, handle func(t *Timer) error) *TimingWheel {
 	tickMs := int64(tick / time.Millisecond)
 	if tickMs <= 0 {
 		panic(tickMsErr)
 	}
 
 	startMs := time.Now().UTC().UnixMilli()
-	return newTimingWheel(delayqueue.New(int(wheelSize)), tickMs, wheelSize, startMs)
+	return newTimingWheel(delayqueue.New(int(wheelSize)),
+		tickMs,
+		wheelSize,
+		startMs,
+		handle)
 }
 
-func newTimingWheel(_queue *delayqueue.DelayQueue, _tickMs, _wheelSize, _startMs int64) *TimingWheel {
+func newTimingWheel(_queue *delayqueue.DelayQueue, _tickMs, _wheelSize, _startMs int64,
+	_handler func(t *Timer) error) *TimingWheel {
 	tw := &TimingWheel{
 		tickMs:      _tickMs,
 		currentTime: _startMs - (_startMs % _tickMs),
@@ -36,6 +44,7 @@ func newTimingWheel(_queue *delayqueue.DelayQueue, _tickMs, _wheelSize, _startMs
 		interval:    _tickMs * _wheelSize,
 		buckets:     make([]*Bucket, _wheelSize),
 		queue:       _queue,
+		handler:     _handler,
 	}
 
 	for i := int64(0); i < _wheelSize; i++ {
@@ -45,8 +54,10 @@ func newTimingWheel(_queue *delayqueue.DelayQueue, _tickMs, _wheelSize, _startMs
 	return tw
 }
 
-func (tw *TimingWheel) Add(t *Timer) error {
-	return nil
+func (tw *TimingWheel) Add(t *Timer) {
+	if !tw.addTimer(t) {
+		_ = tw.handler(t)
+	}
 }
 
 func (tw *TimingWheel) Remove(t *Timer) {
@@ -54,7 +65,7 @@ func (tw *TimingWheel) Remove(t *Timer) {
 	b.Remove(t.id)
 }
 
-func (tw *TimingWheel) add(t *Timer) bool {
+func (tw *TimingWheel) addTimer(t *Timer) bool {
 	currentTime := tw.currentTime
 	switch {
 	case t.expiration < currentTime+tw.tickMs:
@@ -74,9 +85,13 @@ func (tw *TimingWheel) add(t *Timer) bool {
 	default:
 		// Out of range. Put it into the overflow wheel
 		if tw.overflowWheel == nil {
-			tw.overflowWheel = newTimingWheel(tw.queue, tw.interval, tw.wheelSize, currentTime)
+			tw.overflowWheel = newTimingWheel(tw.queue,
+				tw.interval,
+				tw.wheelSize,
+				currentTime,
+				tw.handler)
 		}
-		return tw.overflowWheel.add(t)
+		return tw.overflowWheel.addTimer(t)
 	}
 }
 
