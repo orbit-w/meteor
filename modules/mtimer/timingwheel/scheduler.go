@@ -42,14 +42,14 @@ type Scheduler struct {
 	idGen    atomic.Uint64
 	tw       *TimingWheel
 	log      *mlog.ZapLogger
-	ch       unbounded.IUnbounded[Task]
+	ch       unbounded.IUnbounded[*TimerTask]
 	wg       sync.WaitGroup
 	complete chan struct{}
 }
 
 func NewScheduler() *Scheduler {
 	s := &Scheduler{
-		ch:       unbounded.New[Task](1024),
+		ch:       unbounded.New[*TimerTask](1024),
 		log:      mlog.NewLogger("scheduler"),
 		wg:       sync.WaitGroup{},
 		complete: make(chan struct{}, 1),
@@ -150,12 +150,8 @@ func (s *Scheduler) runConsumer() {
 			close(s.complete)
 		}()
 
-		s.ch.Receive(func(t Task) (exit bool) {
-			if t.Expired() {
-				s.log.Error("task exec timeout", zap.Duration("delay", time.Since(t.expireAt)))
-				return
-			}
-			t.cb.Exec()
+		s.ch.Receive(func(t *TimerTask) (exit bool) {
+			t.callback.Exec()
 			return
 		})
 	}()
@@ -165,10 +161,9 @@ func (s *Scheduler) uniqueID() uint64 {
 	return s.idGen.Add(1)
 }
 
-func (s *Scheduler) handleTimer(t *Timer) error {
+func (s *Scheduler) handleTimer(t *TimerTask) error {
 	// Define the sender function to handle tasks.
-	task := newTask(t.callback)
-	err := s.ch.Send(task)
+	err := s.ch.Send(t)
 	if err != nil {
 		s.log.Error("send callback failed", zap.Error(err))
 	}

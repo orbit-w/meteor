@@ -31,36 +31,19 @@ func (cb *Callback) Exec() {
 	cb.f(cb.args...)
 }
 
-type Timer struct {
+type TimerTask struct {
 	id         uint64
 	bIndex     int //bucket id
 	expiration int64
 	callback   Callback
 }
 
-func newTimer(_id uint64, _delay time.Duration, cb Callback) *Timer {
-	return &Timer{
+func newTimer(_id uint64, _delay time.Duration, cb Callback) *TimerTask {
+	return &TimerTask{
 		id:         _id,
 		callback:   cb,
 		expiration: time.Now().UTC().Add(_delay).UnixMilli(),
 	}
 }
 
-type Task struct {
-	Id       uint64
-	cb       Callback
-	expireAt time.Time
-}
-
-func newTask(cb Callback) Task {
-	return Task{
-		cb:       cb,
-		expireAt: time.Now().Add(taskTimeout),
-	}
-}
-
-func (t *Task) Expired() bool {
-	return time.Now().After(t.expireAt)
-}
-
-type Command func(*Timer) (success bool)
+type Command func(*TimerTask) (success bool)

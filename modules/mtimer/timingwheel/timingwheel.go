@@ -17,12 +17,12 @@ type TimingWheel struct {
 	buckets       []*Bucket
 	queue         *delayqueue.DelayQueue
 	overflowWheel atomic.Pointer[TimingWheel]
-	handler       func(t *Timer) error
+	handler       func(t *TimerTask) error
 	close         chan struct{}
 	log           *mlog.ZapLogger
 }
 
-func NewTimingWheel(tick time.Duration, wheelSize int64, handle func(t *Timer) error) *TimingWheel {
+func NewTimingWheel(tick time.Duration, wheelSize int64, handle func(t *TimerTask) error) *TimingWheel {
 	tickMs := int64(tick / time.Millisecond)
 	if tickMs <= 0 {
 		panic(tickMsErr)
@@ -37,7 +37,7 @@ func NewTimingWheel(tick time.Duration, wheelSize int64, handle func(t *Timer) e
 }
 
 func newTimingWheel(_queue *delayqueue.DelayQueue, _tickMs, _wheelSize, _startMs int64,
-	_handler func(t *Timer) error) *TimingWheel {
+	_handler func(t *TimerTask) error) *TimingWheel {
 	tw := &TimingWheel{
 		tickMs:    _tickMs,
 		startMs:   _startMs,
@@ -58,13 +58,13 @@ func newTimingWheel(_queue *delayqueue.DelayQueue, _tickMs, _wheelSize, _startMs
 	return tw
 }
 
-func (tw *TimingWheel) add(t *Timer) {
+func (tw *TimingWheel) add(t *TimerTask) {
 	if !tw.addTimer(t) {
 		_ = tw.handler(t)
 	}
 }
 
-func (tw *TimingWheel) remove(t *Timer) {
+func (tw *TimingWheel) remove(id uint64) {
 
 }
 
@@ -72,7 +72,7 @@ func (tw *TimingWheel) stop() {
 	close(tw.close)
 }
 
-func (tw *TimingWheel) addTimer(t *Timer) bool {
+func (tw *TimingWheel) addTimer(t *TimerTask) bool {
 	currentTime := tw.currentTime.Load()
 	switch {
 	case t.expiration < currentTime+tw.tickMs:
@@ -113,7 +113,7 @@ func (tw *TimingWheel) run() {
 		case elem := <-tw.queue.C:
 			b := elem.(*Bucket)
 			tw.advanceClock(b.Expiration())
-			b.Range(func(t *Timer) bool {
+			b.Range(func(t *TimerTask) bool {
 				if !tw.addTimer(t) {
 					_ = tw.handler(t)
 				}
@@ -145,7 +145,7 @@ func (tw *TimingWheel) advanceClock(timeMs int64) {
 }
 
 // delay 单位 ms
-func (tw *TimingWheel) calcVirtualId(t *Timer) (virtualId, index int64) {
+func (tw *TimingWheel) calcVirtualId(t *TimerTask) (virtualId, index int64) {
 	virtualId = t.expiration / tw.tickMs
 	index = virtualId % tw.wheelSize
 	return

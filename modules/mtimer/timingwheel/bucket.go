@@ -15,20 +15,20 @@ import (
 type Bucket struct {
 	expiration atomic.Int64
 	mu         sync.Mutex
-	list       *linked_list.LinkedList[uint64, *Timer]
-	timers     map[uint64]*linked_list.Entry[uint64, *Timer]
+	list       *linked_list.LinkedList[uint64, *TimerTask]
+	timers     map[uint64]*linked_list.Entry[uint64, *TimerTask]
 }
 
 func newBucket() *Bucket {
 	b := &Bucket{
-		list:   linked_list.New[uint64, *Timer](),
-		timers: make(map[uint64]*linked_list.Entry[uint64, *Timer]),
+		list:   linked_list.New[uint64, *TimerTask](),
+		timers: make(map[uint64]*linked_list.Entry[uint64, *TimerTask]),
 	}
 	b.expiration.Store(-1)
 	return b
 }
 
-func (b *Bucket) Add(t *Timer) {
+func (b *Bucket) Add(t *TimerTask) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	ent := b.list.LPush(t.id, t)
@@ -55,7 +55,7 @@ func (b *Bucket) setExpiration(expiration int64) bool {
 	return b.expiration.Swap(expiration) != expiration
 }
 
-func (b *Bucket) Range(cmd func(t *Timer) bool) {
+func (b *Bucket) Range(cmd func(t *TimerTask) bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	var diff int //heap 偏移量
@@ -77,7 +77,7 @@ func (b *Bucket) Range(cmd func(t *Timer) bool) {
 	b.setExpiration(-1)
 }
 
-func (b *Bucket) peek(i int) *Timer {
+func (b *Bucket) peek(i int) *TimerTask {
 	ent := b.list.RPeekAt(i)
 	if ent == nil {
 		return nil
@@ -86,7 +86,7 @@ func (b *Bucket) peek(i int) *Timer {
 	return ent.Value
 }
 
-func (b *Bucket) pop(i int) *Timer {
+func (b *Bucket) pop(i int) *TimerTask {
 	ent := b.list.RPopAt(i)
 	if ent == nil {
 		return nil
