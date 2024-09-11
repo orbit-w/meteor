@@ -3,6 +3,7 @@ package timewheel
 import (
 	"github.com/orbit-w/meteor/modules/mlog"
 	"github.com/orbit-w/meteor/modules/mtimer/timingwheel/delayqueue"
+	"sync/atomic"
 	"time"
 )
 
@@ -15,8 +16,9 @@ type TimingWheel struct {
 	taskCounter   int32 //这一层时间轮上的总定时任务数。
 	buckets       []*Bucket
 	queue         *delayqueue.DelayQueue
-	overflowWheel *TimingWheel
+	overflowWheel atomic.Pointer[TimingWheel]
 	handler       func(t *Timer) error
+	stop          chan struct{}
 	log           *mlog.ZapLogger
 }
 
@@ -45,6 +47,7 @@ func newTimingWheel(_queue *delayqueue.DelayQueue, _tickMs, _wheelSize, _startMs
 		buckets:     make([]*Bucket, _wheelSize),
 		queue:       _queue,
 		handler:     _handler,
+		stop:        make(chan struct{}, 1),
 	}
 
 	for i := int64(0); i < _wheelSize; i++ {
@@ -63,6 +66,10 @@ func (tw *TimingWheel) Add(t *Timer) {
 func (tw *TimingWheel) Remove(t *Timer) {
 	b := tw.buckets[t.bIndex]
 	b.Remove(t.id)
+}
+
+func (tw *TimingWheel) Stop() {
+	close(tw.stop)
 }
 
 func (tw *TimingWheel) addTimer(t *Timer) bool {
@@ -84,14 +91,36 @@ func (tw *TimingWheel) addTimer(t *Timer) bool {
 		return true
 	default:
 		// Out of range. Put it into the overflow wheel
-		if tw.overflowWheel == nil {
-			tw.overflowWheel = newTimingWheel(tw.queue,
-				tw.interval,
+		ow := tw.overflowWheel.Load()
+		if ow == nil {
+			tw.overflowWheel.CompareAndSwap(nil, newTimingWheel(tw.queue,
+				tw.tickMs,
 				tw.wheelSize,
 				currentTime,
-				tw.handler)
+				tw.handler))
+
+			ow = tw.overflowWheel.Load()
 		}
-		return tw.overflowWheel.addTimer(t)
+
+		return ow.addTimer(t)
+	}
+}
+
+func (tw *TimingWheel) run() {
+	for {
+		select {
+		case elem := <-tw.queue.C:
+			b := elem.(*Bucket)
+			tw.advanceClock(b.Expiration())
+			b.Range(func(t *Timer) bool {
+				if !tw.addTimer(t) {
+					_ = tw.handler(t)
+				}
+				return true
+			})
+		case <-tw.stop:
+			return
+		}
 	}
 }
 
@@ -99,8 +128,9 @@ func (tw *TimingWheel) advanceClock(timeMs int64) {
 	if timeMs >= tw.currentTime+tw.tickMs {
 		tw.currentTime = timeMs - timeMs%tw.tickMs
 
-		if tw.overflowWheel != nil {
-			tw.overflowWheel.advanceClock(tw.currentTime)
+		ow := tw.overflowWheel.Load()
+		if ow != nil {
+			ow.advanceClock(tw.currentTime)
 		}
 	}
 }

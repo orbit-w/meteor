@@ -52,31 +52,13 @@ type Scheduler struct {
 }
 
 func NewScheduler() *Scheduler {
-	tw := NewTimingWheel(time.Millisecond, 20)
-	s := &Scheduler{
-		timingWheel: tw, // The timingWheel level is the second-level time wheel.
-		ch:          unbounded.New[Task](1024),
-		interval:    time.Second,
-		stop:        make(chan struct{}, 1),
-		done:        make(chan struct{}, 1),
-		log:         mlog.NewLogger("scheduler"),
-		wg:          sync.WaitGroup{},
-		cache:       make(map[uint64]*Timer),
-	}
-	return s
+	return nil
 }
 
 // Add adds a new task to the scheduler with the given delay and callback
 // Add 添加一个新的任务到调度器，使用给定的延迟和回调
 func (s *Scheduler) Add(delay time.Duration, callback func(...any), args ...any) (uint64, error) {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-	timer := newTimer(s.uniqueID(), delay, newCallback(callback, args))
-	if err := s.timingWheel.Add(timer); err != nil {
-		return 0, err
-	}
-	s.cache[timer.id] = timer
-	return timer.id, nil
+	return 0, nil
 }
 
 // Remove removes a task from the scheduler by its ID

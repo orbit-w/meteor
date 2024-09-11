@@ -6,7 +6,7 @@ type TimingWheel struct {
 	upperInterval int64 //上一级时间轮的刻度间隔
 	step          int64 //当前时间指针的指向
 	lv            int64 //多维时间轮索引
-	buckets       []*Bucket
+	buckets       []*tBucket
 	overflowWheel *TimingWheel
 }
 
@@ -15,7 +15,7 @@ func NewTimingWheel(interval int64, lv int64, scales int64) *TimingWheel {
 		interval: interval,
 		lv:       lv,
 		scales:   scales,
-		buckets:  make([]*Bucket, scales),
+		buckets:  make([]*tBucket, scales),
 	}
 
 	for i := int64(0); i < scales; i++ {

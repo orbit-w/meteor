@@ -8,28 +8,28 @@ import "github.com/orbit-w/meteor/bases/container/linked_list"
    @2024 8月 周六 16:08
 */
 
-type Bucket struct {
+type tBucket struct {
 	index int64
 	list  *linked_list.LinkedList[uint64, *Timer]
 	tasks map[uint64]*linked_list.Entry[uint64, *Timer]
 }
 
-func newBucket(i int64) *Bucket {
-	return &Bucket{
+func newBucket(i int64) *tBucket {
+	return &tBucket{
 		index: i,
 		list:  linked_list.New[uint64, *Timer](),
 		tasks: make(map[uint64]*linked_list.Entry[uint64, *Timer]),
 	}
 }
 
-func (b *Bucket) GetIndex() int64 {
+func (b *tBucket) GetIndex() int64 {
 	if b == nil {
 		return 0
 	}
 	return b.index
 }
 
-func (b *Bucket) Set(task *Timer) {
+func (b *tBucket) Set(task *Timer) {
 	if b == nil {
 		return
 	}
@@ -37,7 +37,7 @@ func (b *Bucket) Set(task *Timer) {
 	b.tasks[task.id] = ent
 }
 
-func (b *Bucket) Del(taskID uint64) bool {
+func (b *tBucket) Del(taskID uint64) bool {
 	if b == nil {
 		return false
 	}
@@ -51,7 +51,7 @@ func (b *Bucket) Del(taskID uint64) bool {
 	return false
 }
 
-func (b *Bucket) Peek(i int) *Timer {
+func (b *tBucket) Peek(i int) *Timer {
 	if b == nil {
 		return nil
 	}
@@ -63,7 +63,7 @@ func (b *Bucket) Peek(i int) *Timer {
 	return ent.Value
 }
 
-func (b *Bucket) Pop(i int) *Timer {
+func (b *tBucket) Pop(i int) *Timer {
 	if b == nil {
 		return nil
 	}
@@ -77,14 +77,14 @@ func (b *Bucket) Pop(i int) *Timer {
 	return task
 }
 
-func (b *Bucket) Len() int {
+func (b *tBucket) Len() int {
 	if b == nil {
 		return 0
 	}
 	return b.list.Len()
 }
 
-func (b *Bucket) Free() {
+func (b *tBucket) Free() {
 	if b == nil {
 		return
 	}
