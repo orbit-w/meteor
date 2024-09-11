@@ -93,11 +93,12 @@ func (tw *TimingWheel) addTimer(t *Timer) bool {
 		// Out of range. Put it into the overflow wheel
 		ow := tw.overflowWheel.Load()
 		if ow == nil {
-			tw.overflowWheel.CompareAndSwap(nil, newTimingWheel(tw.queue,
-				tw.tickMs,
+			ntw := newTimingWheel(tw.queue,
+				tw.tickMs*tw.wheelSize,
 				tw.wheelSize,
 				currentTime,
-				tw.handler))
+				tw.handler)
+			tw.overflowWheel.CompareAndSwap(nil, ntw)
 
 			ow = tw.overflowWheel.Load()
 		}

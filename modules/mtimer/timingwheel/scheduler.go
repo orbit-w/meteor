@@ -48,7 +48,14 @@ type Scheduler struct {
 }
 
 func NewScheduler() *Scheduler {
-	return nil
+	s := &Scheduler{
+		ch:       unbounded.New[Task](1024),
+		log:      mlog.NewLogger("scheduler"),
+		wg:       sync.WaitGroup{},
+		complete: make(chan struct{}, 1),
+	}
+	s.tw = NewTimingWheel(time.Millisecond, 20, s.handleTimer)
+	return s
 }
 
 // Add adds a new task to the scheduler with the given delay and callback
@@ -156,4 +163,14 @@ func (s *Scheduler) runConsumer() {
 
 func (s *Scheduler) uniqueID() uint64 {
 	return s.idGen.Add(1)
+}
+
+func (s *Scheduler) handleTimer(t *Timer) error {
+	// Define the sender function to handle tasks.
+	task := newTask(t.callback)
+	err := s.ch.Send(task)
+	if err != nil {
+		s.log.Error("send callback failed", zap.Error(err))
+	}
+	return err
 }
