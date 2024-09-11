@@ -33,7 +33,7 @@ func (cb *Callback) Exec() {
 
 type Timer struct {
 	id         uint64
-	bIndex     int64 //bucket id
+	bIndex     int //bucket id
 	expiration int64
 	callback   Callback
 }

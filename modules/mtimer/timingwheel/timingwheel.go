@@ -8,17 +8,17 @@ import (
 )
 
 type TimingWheel struct {
-	currentTime   int64 //当前时间戳 ms
-	tickMs        int64 //刻度的时间间隔,最高精度是毫秒
-	wheelSize     int64 //每一层时间轮上的Bucket数量
-	interval      int64 //这层时间轮总时长，等于滴答时长乘以wheelSize
-	startMs       int64 //开始时间
-	taskCounter   int32 //这一层时间轮上的总定时任务数。
+	currentTime   atomic.Int64 //当前时间戳 ms，用于判断任务需要插入哪个时间轮
+	tickMs        int64        //刻度的时间间隔,最高精度是毫秒
+	wheelSize     int64        //每一层时间轮上的Bucket数量
+	interval      int64        //这层时间轮总时长，等于滴答时长乘以wheelSize
+	startMs       int64        //开始时间
+	taskCounter   int32        //这一层时间轮上的总定时任务数。
 	buckets       []*Bucket
 	queue         *delayqueue.DelayQueue
 	overflowWheel atomic.Pointer[TimingWheel]
 	handler       func(t *Timer) error
-	stop          chan struct{}
+	close         chan struct{}
 	log           *mlog.ZapLogger
 }
 
@@ -39,16 +39,17 @@ func NewTimingWheel(tick time.Duration, wheelSize int64, handle func(t *Timer) e
 func newTimingWheel(_queue *delayqueue.DelayQueue, _tickMs, _wheelSize, _startMs int64,
 	_handler func(t *Timer) error) *TimingWheel {
 	tw := &TimingWheel{
-		tickMs:      _tickMs,
-		currentTime: _startMs - (_startMs % _tickMs),
-		startMs:     _startMs,
-		wheelSize:   _wheelSize,
-		interval:    _tickMs * _wheelSize,
-		buckets:     make([]*Bucket, _wheelSize),
-		queue:       _queue,
-		handler:     _handler,
-		stop:        make(chan struct{}, 1),
+		tickMs:    _tickMs,
+		startMs:   _startMs,
+		wheelSize: _wheelSize,
+		interval:  _tickMs * _wheelSize,
+		buckets:   make([]*Bucket, _wheelSize),
+		queue:     _queue,
+		handler:   _handler,
+		close:     make(chan struct{}, 1),
 	}
+
+	tw.currentTime.Store(_startMs - (_startMs % _tickMs))
 
 	for i := int64(0); i < _wheelSize; i++ {
 		tw.buckets[i] = newBucket()
@@ -57,23 +58,22 @@ func newTimingWheel(_queue *delayqueue.DelayQueue, _tickMs, _wheelSize, _startMs
 	return tw
 }
 
-func (tw *TimingWheel) Add(t *Timer) {
+func (tw *TimingWheel) add(t *Timer) {
 	if !tw.addTimer(t) {
 		_ = tw.handler(t)
 	}
 }
 
-func (tw *TimingWheel) Remove(t *Timer) {
-	b := tw.buckets[t.bIndex]
-	b.Remove(t.id)
+func (tw *TimingWheel) remove(t *Timer) {
+
 }
 
-func (tw *TimingWheel) Stop() {
-	close(tw.stop)
+func (tw *TimingWheel) stop() {
+	close(tw.close)
 }
 
 func (tw *TimingWheel) addTimer(t *Timer) bool {
-	currentTime := tw.currentTime
+	currentTime := tw.currentTime.Load()
 	switch {
 	case t.expiration < currentTime+tw.tickMs:
 		// Already expired
@@ -118,19 +118,27 @@ func (tw *TimingWheel) run() {
 				}
 				return true
 			})
-		case <-tw.stop:
+		case <-tw.close:
 			return
 		}
 	}
 }
 
+func (tw *TimingWheel) poll() {
+	tw.queue.Poll(tw.close, func() int64 {
+		return time.Now().UTC().UnixMilli()
+	})
+}
+
 func (tw *TimingWheel) advanceClock(timeMs int64) {
-	if timeMs >= tw.currentTime+tw.tickMs {
-		tw.currentTime = timeMs - timeMs%tw.tickMs
+	cur := tw.currentTime.Load()
+	if timeMs >= cur+tw.tickMs {
+		cur = timeMs - timeMs%tw.tickMs
+		tw.currentTime.Store(cur)
 
 		ow := tw.overflowWheel.Load()
 		if ow != nil {
-			ow.advanceClock(tw.currentTime)
+			ow.advanceClock(cur)
 		}
 	}
 }

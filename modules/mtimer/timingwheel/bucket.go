@@ -16,30 +16,32 @@ type Bucket struct {
 	expiration atomic.Int64
 	mu         sync.Mutex
 	list       *linked_list.LinkedList[uint64, *Timer]
-	tasks      map[uint64]*linked_list.Entry[uint64, *Timer]
+	timers     map[uint64]*linked_list.Entry[uint64, *Timer]
 }
 
 func newBucket() *Bucket {
-	return &Bucket{
-		list:  linked_list.New[uint64, *Timer](),
-		tasks: make(map[uint64]*linked_list.Entry[uint64, *Timer]),
+	b := &Bucket{
+		list:   linked_list.New[uint64, *Timer](),
+		timers: make(map[uint64]*linked_list.Entry[uint64, *Timer]),
 	}
+	b.expiration.Store(-1)
+	return b
 }
 
-func (b *Bucket) Add(task *Timer) {
+func (b *Bucket) Add(t *Timer) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	ent := b.list.LPush(task.id, task)
-	b.tasks[task.id] = ent
+	ent := b.list.LPush(t.id, t)
+	b.timers[t.id] = ent
 }
 
 func (b *Bucket) Remove(taskID uint64) bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	ent := b.tasks[taskID]
+	ent := b.timers[taskID]
 	if ent != nil {
 		b.list.Remove(ent)
-		delete(b.tasks, taskID)
+		delete(b.timers, taskID)
 		return true
 	}
 	return false
@@ -71,6 +73,8 @@ func (b *Bucket) Range(cmd func(t *Timer) bool) {
 			diff++
 		}
 	}
+
+	b.setExpiration(-1)
 }
 
 func (b *Bucket) peek(i int) *Timer {
@@ -88,7 +92,7 @@ func (b *Bucket) pop(i int) *Timer {
 		return nil
 	}
 
-	task := ent.Value
-	delete(b.tasks, task.id)
-	return task
+	timer := ent.Value
+	delete(b.timers, timer.id)
+	return timer
 }
