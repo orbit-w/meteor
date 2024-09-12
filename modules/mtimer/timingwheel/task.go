@@ -1,6 +1,7 @@
 package timewheel
 
 import (
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -40,6 +41,7 @@ type TimerTask struct {
 	id         uint64
 	expiration int64
 	callback   Callback
+	mux        sync.Mutex
 
 	entry atomic.Pointer[TimerTaskEntry]
 }
@@ -53,18 +55,28 @@ func newTimerTask(_id uint64, _delay time.Duration, cb Callback) *TimerTask {
 }
 
 func (t *TimerTask) isCanceled() bool {
-	return false
+	return t.entry.Load() == nil
 }
 
 func (t *TimerTask) setTimerTaskEntry(entry *TimerTaskEntry) {
+	t.mux.Lock()
+	defer t.mux.Unlock()
+	if currentEntry := t.entry.Load(); currentEntry != nil && currentEntry != entry {
+		currentEntry.remove()
+	}
 	t.entry.Store(entry)
 }
 
+// gets the TimerTaskEntry for the TimerTask.
 func (t *TimerTask) getTimerTaskEntry() *TimerTaskEntry {
 	return t.entry.Load()
 }
 
-// Cancel 取消任务,线程安全
 func (t *TimerTask) Cancel() {
-
+	t.mux.Lock()
+	defer t.mux.Unlock()
+	if entry := t.entry.Load(); entry != nil {
+		entry.remove()
+		t.entry.Store(nil)
+	}
 }

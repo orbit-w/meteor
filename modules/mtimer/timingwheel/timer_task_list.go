@@ -34,14 +34,20 @@ func (ins *TimerTaskLinkedList) init() {
 	ins.root.next = &ins.root
 }
 
-func (ins *TimerTaskLinkedList) Add(timer *TimerTask) *TimerTaskEntry {
-	ins.mux.Lock()
-	defer ins.mux.Unlock()
-	ent := &TimerTaskEntry{
-		timerTask: timer,
-		list:      ins,
+func (ins *TimerTaskLinkedList) Add(ent *TimerTaskEntry) *TimerTaskEntry {
+	var done bool
+	for !done {
+		ent.remove()
+
+		ins.mux.Lock()
+		if ent.list == nil {
+			ins.insert(ent, &ins.root)
+			ent.list = ins
+			ins.len++
+			done = true
+		}
+		ins.mux.Unlock()
 	}
-	ins.insert(ent, &ins.root)
 	return ent
 }
 

@@ -14,7 +14,7 @@ type TimingWheel struct {
 	interval      int64        //这层时间轮总时长，等于滴答时长乘以wheelSize
 	startMs       int64        //开始时间
 	taskCounter   int32        //这一层时间轮上的总定时任务数。
-	buckets       []*Bucket
+	buckets       []*TimerTaskLinkedList
 	queue         *delayqueue.DelayQueue
 	overflowWheel atomic.Pointer[TimingWheel]
 	handler       func(t *TimerTask) error
@@ -43,7 +43,7 @@ func newTimingWheel(_queue *delayqueue.DelayQueue, _tickMs, _wheelSize, _startMs
 		startMs:   _startMs,
 		wheelSize: _wheelSize,
 		interval:  _tickMs * _wheelSize,
-		buckets:   make([]*Bucket, _wheelSize),
+		buckets:   make([]*TimerTaskLinkedList, _wheelSize),
 		queue:     _queue,
 		handler:   _handler,
 		close:     make(chan struct{}, 1),
@@ -52,7 +52,7 @@ func newTimingWheel(_queue *delayqueue.DelayQueue, _tickMs, _wheelSize, _startMs
 	tw.currentTime.Store(_startMs - (_startMs % _tickMs))
 
 	for i := int64(0); i < _wheelSize; i++ {
-		tw.buckets[i] = newBucket()
+		tw.buckets[i] = NewTimerTaskLinkedList()
 	}
 
 	return tw
@@ -113,7 +113,7 @@ func (tw *TimingWheel) run() {
 	for {
 		select {
 		case elem := <-tw.queue.C:
-			b := elem.(*Bucket)
+			b := elem.(*TimerTaskLinkedList)
 			tw.advanceClock(b.Expiration())
 			b.Range(func(t *TimerTask) bool {
 				if !tw.addTimer(t) {
