@@ -33,5 +33,5 @@ func TestTimeWheel_Atomic(t *testing.T) {
 
 	// Load the new value
 	loadedStruct = ptr.Load()
-	fmt.Println("New Loaded Value:", loadedStruct.Value)
+	fmt.Println("NewTimerTaskLinkedList Loaded Value:", loadedStruct.Value)
 }

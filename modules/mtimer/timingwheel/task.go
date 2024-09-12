@@ -1,12 +1,17 @@
 package timewheel
 
-import "time"
+import (
+	"sync/atomic"
+	"time"
+)
 
 /*
    @Author: orbit-w
    @File: task
    @2024 8月 周四 23:31
 */
+
+type Command func(*TimerTask) (success bool)
 
 // Callback 延迟调用函数对象
 type Callback struct {
@@ -33,12 +38,13 @@ func (cb *Callback) Exec() {
 
 type TimerTask struct {
 	id         uint64
-	bIndex     int //bucket id
 	expiration int64
 	callback   Callback
+
+	entry atomic.Pointer[TimerTaskEntry]
 }
 
-func newTimer(_id uint64, _delay time.Duration, cb Callback) *TimerTask {
+func newTimerTask(_id uint64, _delay time.Duration, cb Callback) *TimerTask {
 	return &TimerTask{
 		id:         _id,
 		callback:   cb,
@@ -46,4 +52,19 @@ func newTimer(_id uint64, _delay time.Duration, cb Callback) *TimerTask {
 	}
 }
 
-type Command func(*TimerTask) (success bool)
+func (t *TimerTask) isCanceled() bool {
+	return false
+}
+
+func (t *TimerTask) setTimerTaskEntry(entry *TimerTaskEntry) {
+	t.entry.Store(entry)
+}
+
+func (t *TimerTask) getTimerTaskEntry() *TimerTaskEntry {
+	return t.entry.Load()
+}
+
+// Cancel 取消任务,线程安全
+func (t *TimerTask) Cancel() {
+
+}

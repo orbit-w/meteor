@@ -62,7 +62,7 @@ func NewScheduler() *Scheduler {
 // Add 添加一个新的任务到调度器，使用给定的延迟和回调
 func (s *Scheduler) Add(delay time.Duration, callback func(...any), args ...any) uint64 {
 	id := s.uniqueID()
-	s.tw.add(newTimer(id, delay, newCallback(callback, args)))
+	s.tw.add(newTimerTask(id, delay, newCallback(callback, args)))
 	return id
 }
 

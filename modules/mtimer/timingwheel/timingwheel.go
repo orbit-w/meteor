@@ -75,6 +75,8 @@ func (tw *TimingWheel) stop() {
 func (tw *TimingWheel) addTimer(t *TimerTask) bool {
 	currentTime := tw.currentTime.Load()
 	switch {
+	case t.isCanceled():
+		return false
 	case t.expiration < currentTime+tw.tickMs:
 		// Already expired
 		return false
