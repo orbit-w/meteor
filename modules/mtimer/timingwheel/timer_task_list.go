@@ -37,9 +37,14 @@ func (ins *TimerTaskLinkedList) init() {
 func (ins *TimerTaskLinkedList) Add(ent *TimerTaskEntry) *TimerTaskEntry {
 	var done bool
 	for !done {
+		// Remove the timer task entry if it is already in any other list
+		// We do this outside of the sync block below to avoid deadlocking.
+		// We may retry until timerTaskEntry.list becomes null.
 		ent.remove()
 
 		ins.mux.Lock()
+		//如果 entry 需要被加锁，因为以下场景会产生竞态条件
+		// 1: (list.A FlushAll -> list.B Add) 与 (TimerTask Cancel list.A Remove) 之间存在竞态条件
 		if ent.addToList(ins) {
 			ins.len++
 			done = true
