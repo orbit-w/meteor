@@ -58,13 +58,13 @@ func (t *TimerTask) isCanceled() bool {
 	return t.entry.Load() == nil
 }
 
-func (t *TimerTask) setTimerTaskEntry(entry *TimerTaskEntry) {
+func (t *TimerTask) setTimerTaskEntry(ent *TimerTaskEntry) {
 	t.mux.Lock()
 	defer t.mux.Unlock()
-	if currentEntry := t.entry.Load(); currentEntry != nil && currentEntry != entry {
-		currentEntry.remove()
+	if curEnt := t.entry.Load(); curEnt != nil && curEnt != ent {
+		curEnt.remove()
 	}
-	t.entry.Store(entry)
+	t.entry.Store(ent)
 }
 
 // gets the TimerTaskEntry for the TimerTask.

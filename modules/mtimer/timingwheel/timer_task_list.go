@@ -40,9 +40,7 @@ func (ins *TimerTaskLinkedList) Add(ent *TimerTaskEntry) *TimerTaskEntry {
 		ent.remove()
 
 		ins.mux.Lock()
-		if ent.list == nil {
-			ins.insert(ent, &ins.root)
-			ent.list = ins
+		if ent.addToList(ins) {
 			ins.len++
 			done = true
 		}
@@ -54,40 +52,34 @@ func (ins *TimerTaskLinkedList) Add(ent *TimerTaskEntry) *TimerTaskEntry {
 func (ins *TimerTaskLinkedList) Remove(ent *TimerTaskEntry) {
 	ins.mux.Lock()
 	defer ins.mux.Unlock()
-	if ent.list == ins {
-		ent.prev.next = ent.next
-		ent.next.prev = ent.prev
-
-		ent.clear()
-		ent.list = nil
+	if ent.removeFromList(ins) {
 		ins.len--
 	}
 }
 
-func (ins *TimerTaskLinkedList) Range(cmd func(t *TimerTask) bool) {
+func (ins *TimerTaskLinkedList) FlushAll(cmd func(ent *TimerTaskEntry)) {
 	ins.mux.Lock()
 	defer ins.mux.Unlock()
 	var diff int //heap 偏移量
 
 	//取出当前时间轮指针指向的刻度上的所有定时器
 	for {
-		ent := ins.rPeekAt(diff)
+		ent := ins.head(diff)
 		if ent == nil {
 			break
 		}
 
-		if cmd(ent.timerTask) {
-			//TODO: 逻辑
-			ins.Remove(ent)
-		} else {
-			diff++
+		if ent.removeFromList(ins) {
+			ins.len--
 		}
+		cmd(ent)
+		diff++
 	}
 
 	ins.setExpiration(-1)
 }
 
-func (ins *TimerTaskLinkedList) rPeekAt(i int) *TimerTaskEntry {
+func (ins *TimerTaskLinkedList) head(i int) *TimerTaskEntry {
 	if ins.isEmpty() || i < 0 || i >= ins.len {
 		return nil
 	}
@@ -96,14 +88,6 @@ func (ins *TimerTaskLinkedList) rPeekAt(i int) *TimerTaskEntry {
 		ent = ent.prev
 	}
 	return ent
-}
-
-func (ins *TimerTaskLinkedList) insert(ent, at *TimerTaskEntry) {
-	ent.prev = at
-	ent.next = at.next
-	ent.prev.next = ent
-	ent.next.prev = ent
-	ins.len++
 }
 
 func (ins *TimerTaskLinkedList) isEmpty() bool {

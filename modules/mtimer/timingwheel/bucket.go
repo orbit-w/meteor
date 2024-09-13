@@ -35,7 +35,7 @@ package timewheel
 //	return b.expiration.Swap(expiration) != expiration
 //}
 //
-//func (b *Bucket) Range(cmd func(t *TimerTask) bool) {
+//func (b *Bucket) FlushAll(cmd func(t *TimerTask) bool) {
 //	b.mu.Lock()
 //	defer b.mu.Unlock()
 //	var diff int //heap 偏移量
@@ -58,7 +58,7 @@ package timewheel
 //}
 //
 //func (b *Bucket) peek(i int) *TimerTask {
-//	ent := b.list.rPeekAt(i)
+//	ent := b.list.head(i)
 //	if ent == nil {
 //		return nil
 //	}

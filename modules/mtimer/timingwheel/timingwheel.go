@@ -58,9 +58,11 @@ func newTimingWheel(_queue *delayqueue.DelayQueue, _tickMs, _wheelSize, _startMs
 	return tw
 }
 
-func (tw *TimingWheel) add(t *TimerTask) {
-	if !tw.addTimer(t) {
-		_ = tw.handler(t)
+func (tw *TimingWheel) add(ent *TimerTaskEntry) {
+	if !tw.addTimer(ent) {
+		if !ent.cancelled() {
+			_ = tw.handler(ent.timerTask)
+		}
 	}
 }
 
@@ -72,10 +74,11 @@ func (tw *TimingWheel) stop() {
 	close(tw.close)
 }
 
-func (tw *TimingWheel) addTimer(t *TimerTask) bool {
+func (tw *TimingWheel) addTimer(ent *TimerTaskEntry) bool {
 	currentTime := tw.currentTime.Load()
+	t := ent.timerTask
 	switch {
-	case t.isCanceled():
+	case ent.cancelled():
 		return false
 	case t.expiration < currentTime+tw.tickMs:
 		// Already expired
@@ -84,7 +87,7 @@ func (tw *TimingWheel) addTimer(t *TimerTask) bool {
 		// Put it into its own bucket
 		virtualId, index := tw.calcVirtualId(t)
 		b := tw.buckets[index]
-		b.Add(t)
+		b.Add(ent)
 		// Set the bucket expiration time
 		if b.setExpiration(virtualId * tw.tickMs) {
 			// The bucket needs to be enqueued for the first time
@@ -105,7 +108,7 @@ func (tw *TimingWheel) addTimer(t *TimerTask) bool {
 			ow = tw.overflowWheel.Load()
 		}
 
-		return ow.addTimer(t)
+		return ow.addTimer(ent)
 	}
 }
 
@@ -115,12 +118,7 @@ func (tw *TimingWheel) run() {
 		case elem := <-tw.queue.C:
 			b := elem.(*TimerTaskLinkedList)
 			tw.advanceClock(b.Expiration())
-			b.Range(func(t *TimerTask) bool {
-				if !tw.addTimer(t) {
-					_ = tw.handler(t)
-				}
-				return true
-			})
+			b.FlushAll(tw.add)
 		case <-tw.close:
 			return
 		}

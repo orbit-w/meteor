@@ -60,16 +60,12 @@ func NewScheduler() *Scheduler {
 
 // Add adds a new task to the scheduler with the given delay and callback
 // Add 添加一个新的任务到调度器，使用给定的延迟和回调
-func (s *Scheduler) Add(delay time.Duration, callback func(...any), args ...any) uint64 {
+func (s *Scheduler) Add(delay time.Duration, callback func(...any), args ...any) *TimerTask {
 	id := s.uniqueID()
-	s.tw.add(newTimerTask(id, delay, newCallback(callback, args)))
-	return id
-}
-
-// Remove removes a task from the scheduler by its ID
-// Remove 通过任务 ID 从调度器中移除任务
-func (s *Scheduler) Remove(id uint64) {
-
+	task := newTimerTask(id, delay, newCallback(callback, args))
+	ent := newTimerTaskEntry(task, task.expiration)
+	s.tw.add(ent)
+	return task
 }
 
 // Start starts the Scheduler, initiating the ticking
