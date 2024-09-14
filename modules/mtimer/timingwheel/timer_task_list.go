@@ -43,8 +43,8 @@ func (ins *TimerTaskLinkedList) Add(ent *TimerTaskEntry) *TimerTaskEntry {
 		ent.remove()
 
 		ins.mux.Lock()
-		//如果 entry 需要被加锁，因为以下场景会产生竞态条件
-		// 1: (list.A FlushAll -> list.B Add) 与 (TimerTask Cancel list.A Remove) 之间存在竞态条件
+		// If the entry needs to be locked, it is because the following scenarios can cause race conditions:
+		// 1: There is a race condition between (list.A FlushAll -> list.B Add) and (TimerTask Cancel list.A Remove)
 		if ent.addToList(ins) {
 			ins.len++
 			done = true
@@ -66,7 +66,6 @@ func (ins *TimerTaskLinkedList) FlushAll(cmd func(ent *TimerTaskEntry)) {
 	ins.mux.Lock()
 	defer ins.mux.Unlock()
 
-	//取出当前时间轮指针指向的刻度上的所有定时器
 	for {
 		ent := ins.head()
 		if ent == nil {

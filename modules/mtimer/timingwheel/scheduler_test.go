@@ -88,6 +88,29 @@ func TestScheduler_Add(t *testing.T) {
 	}
 }
 
+func TestScheduler_TimerCancel(t *testing.T) {
+	s := NewScheduler()
+	s.Start()
+	defer func() {
+		_ = s.GracefulStop(context.Background())
+	}()
+	queue := make(chan bool, 1)
+	start := time.Now()
+	timer := s.Add(time.Duration(5)*time.Second, func(args ...any) {
+		queue <- true
+	})
+	go func() {
+		timer.Cancel()
+	}()
+
+	select {
+	case <-queue:
+		t.Error("timer should be canceled")
+	case <-time.After(time.Second * 10):
+		fmt.Println("time since: ", time.Since(start).String())
+	}
+}
+
 func checkTimeCost(t *testing.T, start, end time.Time, before int, after int) bool {
 	due := end.Sub(start)
 	if due > time.Duration(after)*time.Millisecond {
