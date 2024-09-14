@@ -66,10 +66,6 @@ func (tw *TimingWheel) add(ent *TimerTaskEntry) {
 	}
 }
 
-func (tw *TimingWheel) remove(id uint64) {
-
-}
-
 func (tw *TimingWheel) stop() {
 	close(tw.close)
 }

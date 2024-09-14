@@ -1,6 +1,7 @@
 package timewheel
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 )
@@ -59,8 +60,13 @@ func (ins *TimerTaskEntry) cancelled() bool {
 }
 
 func (ins *TimerTaskEntry) remove() {
+	var count int64
 	//NOTE: 并不能保证在多线程环境下，entry一定会被正确移除
 	for currentList := ins.list.Load(); currentList != nil; currentList = ins.list.Load() {
+		count++
+		if count > 10 {
+			fmt.Println("Dead cycle: ", count)
+		}
 		currentList.Remove(ins)
 	}
 }

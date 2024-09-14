@@ -13,7 +13,7 @@ import (
    @2024 8月 周日 15:50
 */
 
-func TestTimingWheel_AfterFunc(t *testing.T) {
+func TestTimingWheel_DelayFunc(t *testing.T) {
 	s := NewScheduler()
 	s.Start()
 	defer func() {

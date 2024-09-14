@@ -65,11 +65,10 @@ func (ins *TimerTaskLinkedList) Remove(ent *TimerTaskEntry) {
 func (ins *TimerTaskLinkedList) FlushAll(cmd func(ent *TimerTaskEntry)) {
 	ins.mux.Lock()
 	defer ins.mux.Unlock()
-	var diff int //heap 偏移量
 
 	//取出当前时间轮指针指向的刻度上的所有定时器
 	for {
-		ent := ins.head(diff)
+		ent := ins.head()
 		if ent == nil {
 			break
 		}
@@ -78,21 +77,17 @@ func (ins *TimerTaskLinkedList) FlushAll(cmd func(ent *TimerTaskEntry)) {
 			ins.len--
 		}
 		cmd(ent)
-		diff++
 	}
 
 	ins.setExpiration(-1)
 }
 
-func (ins *TimerTaskLinkedList) head(i int) *TimerTaskEntry {
-	if ins.isEmpty() || i < 0 || i >= ins.len {
+func (ins *TimerTaskLinkedList) head() *TimerTaskEntry {
+	if ins.isEmpty() {
 		return nil
 	}
 	ent := &ins.root
-	for j := 0; j <= i; j++ {
-		ent = ent.prev
-	}
-	return ent
+	return ent.prev
 }
 
 func (ins *TimerTaskLinkedList) isEmpty() bool {
