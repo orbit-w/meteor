@@ -24,13 +24,27 @@ import (
 */
 
 type IScheduler interface {
-	Add(delay time.Duration, callback func(...any), args ...any) (uint64, error)
-	Remove(id uint64)
+	// Add adds a new task to the scheduler with the given delay and callback.
+	// Parameters:
+	// - delay: The duration to wait before executing the callback.
+	// - callback: The function to execute after the delay.
+	// - args: Additional arguments to pass to the callback function.
+	// Returns:
+	// - *TimerTask: A pointer to the created TimerTask.
+	Add(delay time.Duration, callback func(...any), args ...any) *TimerTask
+
+	// Start initiates the Scheduler, starting the internal processes required for scheduling tasks.
 	Start()
 
 	// GracefulStop stops the Scheduler gracefully, ensuring all pending timers are executed before stopping.
 	// It waits for all running goroutines to finish and handles the context's timeout.
+	// Parameters:
+	// - ctx: A context used to control the timeout for stopping the Scheduler.
+	// Returns:
+	// - error: An error if the Scheduler fails to close within the context's timeout.
 	GracefulStop(ctx context.Context) error
+
+	// Stop stops the Scheduler immediately.
 	Stop()
 }
 
@@ -47,6 +61,8 @@ type Scheduler struct {
 	complete chan struct{}
 }
 
+// NewScheduler creates a new Scheduler instance
+// NewScheduler 创建一个新的 Scheduler 实例
 func NewScheduler() *Scheduler {
 	s := &Scheduler{
 		ch:       unbounded.New[*TimerTask](1024),
@@ -94,6 +110,15 @@ func (s *Scheduler) Start() {
 //
 // Returns:
 // - err: An error if the Scheduler fails to close within the context's timeout.
+//
+// GracefulStop 优雅地停止 Scheduler，确保在停止前执行所有待处理的定时器。
+// 它等待所有正在运行的 goroutine 完成，并处理上下文的超时。
+//
+// 参数:
+// - ctx: 用于控制停止 Scheduler 超时的上下文。
+//
+// 返回:
+// - err: 如果 Scheduler 未能在上下文的超时内关闭，则返回错误。
 func (s *Scheduler) GracefulStop(ctx context.Context) error {
 	if !s.state.CompareAndSwap(StateNormal, StateClosed) {
 		return nil
@@ -118,6 +143,8 @@ func (s *Scheduler) Stop() {
 	return
 }
 
+// stop stops the Scheduler and waits for all goroutines to finish
+// stop 停止 Scheduler 并等待所有 goroutine 完成
 func (s *Scheduler) stop(father context.Context) (err error) {
 	s.tw.stop()
 	go func() {
@@ -153,10 +180,14 @@ func (s *Scheduler) runConsumer() {
 	}()
 }
 
+// uniqueID generates a unique ID for tasks
+// uniqueID 生成任务的唯一ID
 func (s *Scheduler) uniqueID() uint64 {
 	return s.idGen.Add(1)
 }
 
+// handleTimer handles the timer task
+// handleTimer 处理定时任务
 func (s *Scheduler) handleTimer(t *TimerTask) error {
 	// Define the sender function to handle tasks.
 	err := s.ch.Send(t)
