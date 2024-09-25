@@ -29,6 +29,12 @@ func Test_CloseWithNoBlocking(t *testing.T) {
 	_ = conn.Close()
 }
 
+func Test_Addr(t *testing.T) {
+	host := "localhost:0"
+	s := ServeTest(t, host, true)
+	fmt.Println(s.Addr())
+}
+
 func Test_Transport(t *testing.T) {
 	host := "127.0.0.1:6800"
 	s := ServeTest(t, host, true)

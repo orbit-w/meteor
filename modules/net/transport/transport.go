@@ -26,6 +26,7 @@ type IConn interface {
 
 type ITransportServer interface {
 	Serve(host string, _handle func(conn IConn), op network.AcceptorOptions) error
+	Addr() string
 	Stop() error
 }
 

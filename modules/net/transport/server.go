@@ -18,6 +18,7 @@ type AcceptorOptions struct {
 
 type IServer interface {
 	Stop() error
+	Addr() string
 }
 
 func Serve(pStr, host string,
