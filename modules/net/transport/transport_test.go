@@ -7,6 +7,7 @@ import (
 	"github.com/orbit-w/meteor/modules/mlog"
 	gnetwork "github.com/orbit-w/meteor/modules/net/network"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"io"
 	"log"
@@ -111,6 +112,13 @@ func ServeTest(t TestingT, host string, print bool) IServer {
 	if err != nil {
 		panic(err.Error())
 	}
+	return server
+}
+
+func serveTestWithHandler(t assert.TestingT, handle func(conn IConn)) IServer {
+	host := "localhost:0"
+	server, err := Serve("tcp", host, handle)
+	assert.NoError(t, err)
 	return server
 }
 

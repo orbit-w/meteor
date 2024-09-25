@@ -8,8 +8,7 @@ package transport
 
 const (
 	DefaultRecvBufferSize = 512
-	RpcMaxIncomingPacket  = 65536
-	MaxIncomingPacket     = 1<<18 - 1
+	MaxIncomingPacket     = 262144 //256kb
 )
 
 type IUnboundedChan[V any] interface {

@@ -60,7 +60,7 @@ func (c *Config) ToAcceptorOptions() net.AcceptorOptions {
 
 func DefaultServerConfig() *Config {
 	return &Config{
-		MaxIncomingPacket: net.MaxIncomingPacket,
+		MaxIncomingPacket: MaxIncomingPacket,
 		IsGzip:            false,
 		ReadTimeout:       ReadTimeout,
 		WriteTimeout:      WriteTimeout,
@@ -82,7 +82,7 @@ func parseConfig(conf **Config) {
 	}
 
 	if (*conf).MaxIncomingPacket <= 0 {
-		(*conf).MaxIncomingPacket = net.MaxIncomingPacket
+		(*conf).MaxIncomingPacket = MaxIncomingPacket
 	}
 
 	if (*conf).Stage > PROD {

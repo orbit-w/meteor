@@ -41,6 +41,14 @@ type DialOption struct {
 	DisconnectHandler func(nodeId string)
 }
 
+func DefaultDialOption() *DialOption {
+	return &DialOption{
+		MaxIncomingPacket: MaxIncomingPacket,
+		IsBlock:           false,
+		IsGzip:            false,
+	}
+}
+
 type ConnOption struct {
 	MaxIncomingPacket uint32
 }

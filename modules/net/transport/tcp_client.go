@@ -45,6 +45,11 @@ type TcpClient struct {
 	logger    *mlog.ZapLogger
 }
 
+func DialContextByDefaultOp(ctx context.Context, remoteAddr string) IConn {
+	op := DefaultDialOption()
+	return DialContextWithOps(ctx, remoteAddr, op)
+}
+
 // DialWithOps Encapsulates asynchronous TCP connection establishment (with retries and backoff)
 func DialWithOps(remoteAddr string, _ops ...*DialOption) IConn {
 	return DialContextWithOps(context.Background(), remoteAddr, _ops...)
@@ -231,6 +236,7 @@ func (tc *TcpClient) reader() {
 			reader := packet2.ReaderP(bytes)
 			_ = tc.decodeRspAndDispatch(reader)
 		}
+		packet2.Return(in)
 	}
 }
 
@@ -335,7 +341,7 @@ func parseOptions(ops ...*DialOption) (dp *DialOption) {
 		dp.WriteTimeout = op.WriteTimeout
 	}
 	if dp.MaxIncomingPacket <= 0 {
-		dp.MaxIncomingPacket = RpcMaxIncomingPacket
+		dp.MaxIncomingPacket = MaxIncomingPacket
 	}
 
 	if dp.WriteTimeout <= 0 {
