@@ -10,11 +10,9 @@ import (
    @2023 11月 周日 14:23
 */
 
-type StreamState uint32
-
 const (
-	StreamActive StreamState = iota
-	StreamWriteDone
+	DefaultRecvBufferSize = 512
+	MaxIncomingPacket     = 262144 //256kb
 )
 
 const (

@@ -28,6 +28,15 @@ func TestRecoverPanic(t *testing.T) {
 	RecoverPanicV2()
 }
 
+func TestRecoverPanicHandle(t *testing.T) {
+	defer func() {
+		RecoverPanic()
+		fmt.Println("test panic complete")
+	}()
+
+	panic("test panic")
+}
+
 func ExampleRecoverPanic() {
 	for i := 0; i < 3; i++ {
 		RecoverPanicHandle(func() {

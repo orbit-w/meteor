@@ -101,6 +101,12 @@ func benchmarkEcho(b *testing.B, size, num int) {
 		conns[i] = conn
 	}
 
+	defer func() {
+		for i := range conns {
+			_ = conns[i].Close()
+		}
+	}()
+
 	b.ReportAllocs()
 	b.SetBytes(int64(size * num))
 	b.ResetTimer()
@@ -114,17 +120,16 @@ func benchmarkEcho(b *testing.B, size, num int) {
 					return
 				}
 			}
-			_ = conn.Close()
 		}()
 	}
 
-	go func() {
-		for {
-			time.Sleep(time.Second)
-			fmt.Println("count: ", count.Load())
-			fmt.Println("total: ", total)
-		}
-	}()
+	//go func() {
+	//	for {
+	//		time.Sleep(time.Second)
+	//		fmt.Println("count: ", count.Load())
+	//		fmt.Println("total: ", total)
+	//	}
+	//}()
 
 	<-complete
 	runtime.GC()

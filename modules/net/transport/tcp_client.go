@@ -194,7 +194,6 @@ func (tc *TcpClient) reader() {
 
 	var (
 		err   error
-		in    packet2.IPacket
 		bytes []byte
 	)
 
@@ -222,6 +221,7 @@ func (tc *TcpClient) reader() {
 	tc.ack()
 
 	for {
+		var in packet2.IPacket
 		in, err = tc.recv(header, body)
 		if err != nil {
 			return

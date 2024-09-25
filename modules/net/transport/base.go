@@ -6,11 +6,6 @@ package transport
    @2023 11月 周日 19:49
 */
 
-const (
-	DefaultRecvBufferSize = 512
-	MaxIncomingPacket     = 262144 //256kb
-)
-
 type IUnboundedChan[V any] interface {
 	Send(msg V) error
 	Receive(consumer func(msg V) bool)

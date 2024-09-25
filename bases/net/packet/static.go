@@ -27,7 +27,6 @@ func Reader(data []byte) IPacket {
 }
 
 // ReaderP creates a new packet with the given data from the pool.
-// max size is 65536
 func ReaderP(data []byte) IPacket {
 	p := defPool.Get(len(data))
 	p.Write(data)
