@@ -7,21 +7,31 @@ import (
 	"time"
 )
 
+// TimingWheel struct that manages the scheduling of timer tasks using a hierarchical time wheel.
+// TimingWheel 结构体，使用分层时间轮管理定时任务调度。
 type TimingWheel struct {
-	currentTime   atomic.Int64 //当前时间戳 ms，用于判断任务需要插入哪个时间轮
-	tickMs        int64        //刻度的时间间隔,最高精度是毫秒
-	wheelSize     int64        //每一层时间轮上的Bucket数量
-	interval      int64        //这层时间轮总时长，等于滴答时长乘以wheelSize
-	startMs       int64        //开始时间
-	taskCounter   int32        //这一层时间轮上的总定时任务数。
-	buckets       []*TimerTaskLinkedList
-	queue         *delayqueue.DelayQueue
-	overflowWheel atomic.Pointer[TimingWheel]
-	handler       func(t *TimerTask) error
+	currentTime   atomic.Int64                // Current timestamp in milliseconds, used to determine which time wheel the task should be inserted into.
+	tickMs        int64                       // Duration of each tick, with a maximum precision of milliseconds.
+	wheelSize     int64                       // Number of buckets in each layer of the time wheel.
+	interval      int64                       // Total duration of this layer of the time wheel, equal to tick duration multiplied by wheelSize.
+	startMs       int64                       // Start time in milliseconds.
+	taskCounter   int32                       // Total number of timer tasks in this layer of the time wheel.
+	buckets       []*TimerTaskLinkedList      // Buckets in the time wheel.
+	queue         *delayqueue.DelayQueue      // Delay queue for managing timer tasks.
+	overflowWheel atomic.Pointer[TimingWheel] // Pointer to the overflow time wheel.
+	handler       func(t *TimerTask) error    // Function to handle timer tasks.
 	close         chan struct{}
 	log           *mlog.ZapLogger
 }
 
+// NewTimingWheel creates a new TimingWheel instance
+// NewTimingWheel 创建一个新的 TimingWheel 实例
+// Parameters:
+// - tick: The duration of each tick
+// - wheelSize: The number of buckets in the timing wheel
+// - handle: The function to handle timer tasks
+// Returns:
+// - *TimingWheel: A pointer to the created TimingWheel
 func NewTimingWheel(tick time.Duration, wheelSize int64, handle func(t *TimerTask) error) *TimingWheel {
 	tickMs := int64(tick / time.Millisecond)
 	if tickMs <= 0 {
@@ -58,6 +68,10 @@ func newTimingWheel(_queue *delayqueue.DelayQueue, _tickMs, _wheelSize, _startMs
 	return tw
 }
 
+// add adds a timer task entry to the timing wheel
+// add 添加一个定时任务条目到时间轮
+// Parameters:
+// - ent: The timer task entry to add
 func (tw *TimingWheel) add(ent *TimerTaskEntry) {
 	if !tw.addTimer(ent) {
 		if !ent.cancelled() {
@@ -66,10 +80,18 @@ func (tw *TimingWheel) add(ent *TimerTaskEntry) {
 	}
 }
 
+// stop stops the timing wheel
+// stop 停止时间轮
 func (tw *TimingWheel) stop() {
 	close(tw.close)
 }
 
+// addTimer adds a timer task entry to the appropriate bucket or overflow wheel
+// addTimer 将定时任务条目添加到适当的桶或溢出轮
+// Parameters:
+// - ent: The timer task entry to add
+// Returns:
+// - bool: True if the task was added successfully, false otherwise
 func (tw *TimingWheel) addTimer(ent *TimerTaskEntry) bool {
 	currentTime := tw.currentTime.Load()
 	t := ent.timerTask
@@ -108,6 +130,8 @@ func (tw *TimingWheel) addTimer(ent *TimerTaskEntry) bool {
 	}
 }
 
+// run starts the timing wheel's main loop
+// run 启动时间轮的主循环
 func (tw *TimingWheel) run() {
 	for {
 		select {
@@ -121,12 +145,18 @@ func (tw *TimingWheel) run() {
 	}
 }
 
+// poll starts polling the delay queue
+// poll 开始轮询延迟队列
 func (tw *TimingWheel) poll() {
 	tw.queue.Poll(tw.close, func() int64 {
 		return time.Now().UTC().UnixMilli()
 	})
 }
 
+// advanceClock advances the current time of the timing wheel
+// advanceClock 推进时间轮的当前时间
+// Parameters:
+// - timeMs: The new time in milliseconds
 func (tw *TimingWheel) advanceClock(timeMs int64) {
 	cur := tw.currentTime.Load()
 	if timeMs >= cur+tw.tickMs {
@@ -140,7 +170,13 @@ func (tw *TimingWheel) advanceClock(timeMs int64) {
 	}
 }
 
-// delay 单位 ms
+// calcVirtualId calculates the virtual ID and index for a timer task
+// calcVirtualId 计算定时任务的虚拟ID和索引
+// Parameters:
+// - t: The timer task
+// Returns:
+// - virtualId: The virtual ID of the timer task
+// - index: The index of the bucket in the timing wheel
 func (tw *TimingWheel) calcVirtualId(t *TimerTask) (virtualId, index int64) {
 	virtualId = t.expiration / tw.tickMs
 	index = virtualId % tw.wheelSize

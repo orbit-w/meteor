@@ -125,3 +125,19 @@ func checkTimeCost(t *testing.T, start, end time.Time, before int, after int) bo
 
 	return true
 }
+
+func Test_Channel(t *testing.T) {
+	ch := make(chan int, 2)
+	ch <- 1
+	ch <- 2
+	close(ch)
+
+	// 读取已关闭通道中的数据
+	for val := range ch {
+		fmt.Println(val)
+	}
+
+	// 尝试从已关闭且无数据的通道读取
+	val, ok := <-ch
+	fmt.Printf("val: %d, ok: %v\n", val, ok) // 输出: val: 0, ok: false
+}
