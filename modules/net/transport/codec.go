@@ -1,7 +1,7 @@
 package transport
 
 import (
-	packet2 "github.com/orbit-w/meteor/bases/net/packet"
+	packet2 "github.com/orbit-w/meteor/modules/net/packet"
 )
 
 /*

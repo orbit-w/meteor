@@ -1,4 +1,4 @@
-package packet
+package bigendian_buf
 
 import "errors"
 

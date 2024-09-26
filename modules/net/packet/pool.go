@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/orbit-w/meteor/bases/math"
+	"github.com/orbit-w/meteor/bases/net/bigendian_buf"
 	"sync"
 )
 
@@ -14,7 +15,6 @@ import (
 */
 
 const (
-	//maxSize = 65536
 	maxSize = 262144 //256kb
 )
 
@@ -25,6 +25,9 @@ type BufPool struct {
 	buffers    []sync.Pool
 }
 
+// NewPool creates a new Big-endian buffer pool with the given max size.
+// The max size must be a power of 2.
+// The max size must be less than or equal to 262144.
 func NewPool(maxSize int) *BufPool {
 	p := new(BufPool)
 	mz := math.PowerOf2(maxSize)
@@ -34,21 +37,21 @@ func NewPool(maxSize int) *BufPool {
 	for k := range p.buffers {
 		size := 1 << uint32(k)
 		p.buffers[k].New = func() interface{} {
-			return NewWithInitialSize(size)
+			return bigendian_buf.NewWithInitialSize(size)
 		}
 	}
 	return p
 }
 
-func (p *BufPool) Get(size int) *BigEndianPacket {
+func (p *BufPool) Get(size int) IPacket {
 	if size <= 0 || size > p.maxBufSize {
 		return nil
 	}
 	bits := math.GenericFls(size - 1)
-	return p.buffers[bits].Get().(*BigEndianPacket)
+	return p.buffers[bits].Get().(IPacket)
 }
 
-func (p *BufPool) Put(packet *BigEndianPacket) error {
+func (p *BufPool) Put(packet IPacket) error {
 	if packet == nil {
 		return nil
 	}

@@ -2,7 +2,7 @@ package network
 
 import (
 	"encoding/binary"
-	packet2 "github.com/orbit-w/meteor/bases/net/packet"
+	packet2 "github.com/orbit-w/meteor/modules/net/packet"
 	"io"
 	"net"
 	"time"
@@ -41,47 +41,24 @@ func NewCodec(max uint32, _isGzip bool, _readTimeout time.Duration) *Codec {
 // EncodeBody 消息编码协议 body: size<int32> | gzipped<bool> | body<bytes>
 func (c *Codec) EncodeBody(body packet2.IPacket) (packet2.IPacket, error) {
 	defer packet2.Return(body)
-	var buf packet2.IPacket
-	writer := func(data []byte) {
-		buf = packet2.WriterP(4 + 1 + len(data))
-		buf.WriteInt32(int32(len(data)) + gzipSize)
-		buf.WriteBool(c.isGzip)
-		buf.Write(data)
-	}
-
-	if c.isGzip {
-		compressed, err := EncodeGzip(body.Data())
-		if err != nil {
-			return nil, EncodeGzipFailed(err)
-		}
-		writer(compressed)
-	} else {
-		writer(body.Data())
-	}
-
-	return buf, nil
+	return c.encodeBodyRaw(body.Data())
 }
 
-func (c *Codec) EncodeBodyRaw(body []byte) (packet2.IPacket, error) {
-	var buf packet2.IPacket
-	writer := func(data []byte) {
-		buf = packet2.WriterP(4 + 1 + len(data))
-		buf.WriteInt32(int32(len(data)) + gzipSize)
-		buf.WriteBool(c.isGzip)
-		buf.Write(data)
-	}
-
+// EncodeBody 消息编码协议 body: size<int32> | gzipped<bool> | body<bytes>
+func (c *Codec) encodeBodyRaw(data []byte) (packet2.IPacket, error) {
 	if c.isGzip {
-		compressed, err := EncodeGzip(body)
+		compressed, err := EncodeGzip(data)
 		if err != nil {
 			return nil, EncodeGzipFailed(err)
 		}
-		writer(compressed)
-	} else {
-		writer(body)
+		data = compressed
 	}
 
-	return buf, nil
+	w := packet2.WriterP(4 + 1 + len(data))
+	w.WriteInt32(int32(len(data)) + gzipSize)
+	w.WriteBool(c.isGzip)
+	w.Write(data)
+	return w, nil
 }
 
 func (c *Codec) BlockDecodeBody(conn net.Conn, header, body []byte) (packet2.IPacket, error) {

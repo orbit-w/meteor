@@ -1,28 +1,18 @@
 package packet
 
+import "github.com/orbit-w/meteor/bases/net/bigendian_buf"
+
 /*
    @Author: orbit-w
    @File: static
    @2024 8月 周二 23:39
 */
 
-func New() IPacket {
-	return &BigEndianPacket{
-		buf: make([]byte, 0),
-	}
-}
-
-func NewWithInitialSize(initSize int) *BigEndianPacket {
-	return &BigEndianPacket{
-		buf: make([]byte, 0, initSize),
-	}
-}
-
 // Reader creates a new packet with the given data from the pool.
 // max size is 65536
 func Reader(data []byte) IPacket {
-	pack := NewWithInitialSize(len(data))
-	pack.buf = append(pack.buf, data...)
+	pack := bigendian_buf.NewWithInitialSize(len(data))
+	pack.Write(data)
 	return pack
 }
 
@@ -34,7 +24,7 @@ func ReaderP(data []byte) IPacket {
 }
 
 func Writer(size int) IPacket {
-	pack := NewWithInitialSize(size)
+	pack := bigendian_buf.NewWithInitialSize(size)
 	return pack
 }
 
@@ -48,8 +38,5 @@ func Return(v IPacket) {
 		return
 	}
 	v.Reset()
-	p, ok := v.(*BigEndianPacket)
-	if ok {
-		_ = defPool.Put(p)
-	}
+	_ = defPool.Put(v)
 }

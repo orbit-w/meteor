@@ -1,7 +1,7 @@
 package sender_wrapper
 
 import (
-	"github.com/orbit-w/meteor/bases/net/packet"
+	"github.com/orbit-w/meteor/modules/net/packet"
 	"github.com/orbit-w/meteor/modules/unbounded"
 	"runtime/debug"
 )

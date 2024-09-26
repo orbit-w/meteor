@@ -3,8 +3,8 @@ package transport
 import (
 	"context"
 	"github.com/orbit-w/meteor/bases/misc/utils"
-	packet2 "github.com/orbit-w/meteor/bases/net/packet"
 	network2 "github.com/orbit-w/meteor/modules/net/network"
+	packet2 "github.com/orbit-w/meteor/modules/net/packet"
 	"github.com/orbit-w/meteor/modules/wrappers/sender_wrapper"
 	"io"
 	"net"

@@ -2,7 +2,8 @@ package transport
 
 import (
 	"github.com/orbit-w/meteor/bases/misc/number_utils"
-	packet2 "github.com/orbit-w/meteor/bases/net/packet"
+	"github.com/orbit-w/meteor/bases/net/bigendian_buf"
+	packet2 "github.com/orbit-w/meteor/modules/net/packet"
 	"github.com/orbit-w/meteor/modules/wrappers/sender_wrapper"
 	"sync"
 )
@@ -18,7 +19,7 @@ type ControlBuffer struct {
 	state           int8
 	max             uint32
 	length          int
-	buffer          packet2.IPacket
+	buffer          *bigendian_buf.BigEndianPacket
 	mu              sync.Mutex
 	sw              *sender_wrapper.SenderWrapper
 
@@ -31,7 +32,7 @@ func NewControlBuffer(max uint32, _sw *sender_wrapper.SenderWrapper) *ControlBuf
 		state:           TypeWorking,
 		consumerWaiting: false,
 		max:             max,
-		buffer:          packet2.New(),
+		buffer:          bigendian_buf.New(),
 		mu:              sync.Mutex{},
 		ch:              make(chan struct{}, 1),
 		close:           make(chan struct{}, 1),
@@ -45,7 +46,7 @@ func NewControlBuffer(max uint32, _sw *sender_wrapper.SenderWrapper) *ControlBuf
 func BuildControlBuffer(buf *ControlBuffer, max uint32) {
 	buf.max = max
 	buf.ch = make(chan struct{}, 1)
-	buf.buffer = packet2.New()
+	buf.buffer = bigendian_buf.New()
 	buf.mu = sync.Mutex{}
 }
 
@@ -125,7 +126,7 @@ func (ins *ControlBuffer) flush() {
 	}()
 
 	var (
-		writer = packet2.WriterP(2048)
+		writer = bigendian_buf.NewWithInitialSize(2048)
 	)
 
 FLUSH:
