@@ -31,14 +31,12 @@ type ITransportServer interface {
 }
 
 type DialOption struct {
-	RemoteNodeId      string
-	CurrentNodeId     string
 	MaxIncomingPacket uint32
 	IsBlock           bool
 	IsGzip            bool
 	ReadTimeout       time.Duration
 	WriteTimeout      time.Duration
-	DisconnectHandler func(nodeId string)
+	DisconnectHandler func()
 }
 
 func DefaultDialOption() *DialOption {

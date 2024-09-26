@@ -22,51 +22,12 @@ go get github.com/orbit-w/meteor/modules/net/transport
 import "github.com/orbit-w/meteor/modules/net/transport"
 ```
 
-### 创建 Transport
-
-```go
-// 创建一个新的 TCP 传输
-tcpTransport := transport.NewTCPTransport("localhost:8080")
-
-// 创建一个新的 UDP 传输
-udpTransport := transport.NewUDPTransport("localhost:8080")
-```
-
-### 发送数据
-
-```go
-data := []byte("Hello, World!")
-err := tcpTransport.Send(data)
-if err != nil {
-    // 处理错误
-}
-```
-
-### 接收数据
-
-```go
-buffer := make([]byte, 1024)
-n, err := tcpTransport.Receive(buffer)
-if err != nil {
-    // 处理错误
-}
-fmt.Println("Received data:", string(buffer[:n]))
-```
-
-### 关闭 Transport
-
-```go
-err := tcpTransport.Close()
-if err != nil {
-    // 处理错误
-}
-```
-
 ## 方法
 
-### Transport 接口
+### IConn 接口
 
 - `Send(data []byte) error`
+- `SendPack(out packet.IPacket) (err error)`
 - `Receive(buffer []byte) (int, error)`
 - `Close() error`
 
@@ -86,10 +47,7 @@ import (
 
 func Client() {
 	host := "127.0.0.1:xxxx"
-	conn := DialWithOps(host, &DialOption{
-		RemoteNodeId:  "node_0",
-		CurrentNodeId: "node_1",
-	})
+	conn := DialContextByDefaultOp(context.Background(), host)
 	defer func() {
 		_ = conn.Close()
 	}()

@@ -21,10 +21,7 @@ import (
 func Benchmark_SendTest(b *testing.B) {
 	host := "127.0.0.1:6800"
 	ServeTest(b, host, false)
-	conn := DialWithOps(host, &DialOption{
-		RemoteNodeId:  "node_0",
-		CurrentNodeId: "node_1",
-	})
+	conn := DialContextByDefaultOp(context.Background(), host)
 
 	ctx := context.Background()
 
@@ -53,8 +50,40 @@ func Benchmark_SendTest(b *testing.B) {
 	//_ = conn.Close()
 }
 
-func Benchmark_ConcurrencySend_64K_Test(b *testing.B) {
-	benchmarkEcho(b, 65536, 5)
+func Benchmark_Send4K_Test(b *testing.B) {
+	benchmarkEcho(b, 4096, 1)
+}
+
+func Benchmark_Send64K_Test(b *testing.B) {
+	benchmarkEcho(b, 65536, 1)
+}
+
+func Benchmark_Send128K_Test(b *testing.B) {
+	benchmarkEcho(b, 1024*128, 1)
+}
+
+func Benchmark_Concurrency10_Send4K_Test(b *testing.B) {
+	benchmarkEcho(b, 4096, 10)
+}
+
+func Benchmark_Concurrency10_Send64K_Test(b *testing.B) {
+	benchmarkEcho(b, 65536, 10)
+}
+
+func Benchmark_Concurrency10_Send128K_Test(b *testing.B) {
+	benchmarkEcho(b, 1024*128, 10)
+}
+
+func Benchmark_Concurrency128_Send4K_Test(b *testing.B) {
+	benchmarkEcho(b, 4096, 128)
+}
+
+func Benchmark_Concurrency128_Send64K_Test(b *testing.B) {
+	benchmarkEcho(b, 65536, 128)
+}
+
+func Benchmark_Concurrency128_Send128K_Test(b *testing.B) {
+	benchmarkEcho(b, 1024*128, 128)
 }
 
 func benchmarkEcho(b *testing.B, size, num int) {
@@ -95,6 +124,7 @@ func benchmarkEcho(b *testing.B, size, num int) {
 
 	host := server.Addr()
 	fmt.Println("Server Addr: ", host)
+	fmt.Println("Exec Number: ", b.N)
 	conns := make([]IConn, num)
 	for i := 0; i < num; i++ {
 		conn := DialContextByDefaultOp(ctx, host)

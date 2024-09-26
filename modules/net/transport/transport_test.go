@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/orbit-w/meteor/bases/misc/number_utils"
 	"github.com/orbit-w/meteor/modules/mlog"
 	gnetwork "github.com/orbit-w/meteor/modules/net/network"
 	"github.com/spf13/viper"
@@ -11,7 +12,9 @@ import (
 	"go.uber.org/zap"
 	"io"
 	"log"
+	"runtime"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -20,13 +23,25 @@ var (
 	ServeOnce sync.Once
 )
 
+func Test_Echo_4K(t *testing.T) {
+	execMax := 600
+	echoConcurrencyTest(t, 4096, 100, 128, execMax)
+}
+
+func Test_Echo_64K(t *testing.T) {
+	execMax := 600
+	echoConcurrencyTest(t, 65536, 100, 128, execMax)
+}
+
+func Test_Echo_128K(t *testing.T) {
+	execMax := 600
+	echoConcurrencyTest(t, 1024*128, 100, 128, execMax)
+}
+
 func Test_CloseWithNoBlocking(t *testing.T) {
 	host := "127.0.0.1:6800"
 	ServeTest(t, host, true)
-	conn := DialWithOps(host, &DialOption{
-		RemoteNodeId:  "node_0",
-		CurrentNodeId: "node_1",
-	})
+	conn := DialContextByDefaultOp(context.Background(), host)
 	_ = conn.Close()
 }
 
@@ -41,10 +56,7 @@ func Test_Transport(t *testing.T) {
 	s := ServeTest(t, host, true)
 	ctx := context.Background()
 
-	conn := DialWithOps(host, &DialOption{
-		RemoteNodeId:  "node_0",
-		CurrentNodeId: "node_1",
-	})
+	conn := DialContextByDefaultOp(context.Background(), host)
 	defer func() {
 		_ = conn.Close()
 	}()
@@ -69,6 +81,15 @@ func Test_Transport(t *testing.T) {
 
 	time.Sleep(time.Second * 10)
 	_ = s.Stop()
+}
+
+func echoConcurrencyTest(t *testing.T, size, loopNum, cNum, max int) {
+	viper.Set(mlog.FlagLogDir, "./transport.log")
+	for i := 0; i < loopNum; i++ {
+		execNum := number_utils.RandomInt(1, max)
+		testEcho(t, execNum, size, cNum)
+		time.Sleep(time.Millisecond * 100)
+	}
 }
 
 func Test_parseConfig(t *testing.T) {
@@ -131,8 +152,6 @@ func Test_Logger(t *testing.T) {
 	_ctx, cancel := context.WithCancel(context.Background())
 	tc := &TcpClient{
 		remoteAddr:      remoteAddr,
-		remoteNodeId:    "node_1",
-		currentNodeId:   "node_1",
 		maxIncomingSize: 65536,
 		buf:             buf,
 		ctx:             _ctx,
@@ -155,4 +174,87 @@ func Test_Logger(t *testing.T) {
 // TestingT is an interface wrapper around *testing.T
 type TestingT interface {
 	Errorf(format string, args ...interface{})
+}
+
+func testEcho(t *testing.T, execNum, size, num int) {
+	runtime.GC()
+	var (
+		total    = uint64(size * num * execNum)
+		count    = atomic.Uint64{}
+		buf      = make([]byte, size)
+		complete = make(chan struct{}, 1)
+		ctx      = context.Background()
+	)
+
+	server := serveTestWithHandler(t, func(conn IConn) {
+		for {
+			in, err := conn.Recv(ctx)
+			if err != nil {
+				if IsClosedConnError(err) || IsCancelError(err) || errors.Is(err, io.EOF) {
+					break
+				}
+
+				log.Println("conn read failed: ", err.Error())
+				break
+			}
+			if count.Add(uint64(len(in))) >= total {
+				close(complete)
+			}
+		}
+	})
+	defer server.Stop()
+
+	host := server.Addr()
+	fmt.Println("Server Addr: ", host)
+	conns := make([]IConn, num)
+	for i := 0; i < num; i++ {
+		conn := DialContextByDefaultOp(ctx, host)
+		go func() {
+			for {
+				_, err := conn.Recv(ctx)
+				if err != nil {
+					if IsClosedConnError(err) || IsCancelError(err) || errors.Is(err, io.EOF) {
+						break
+					}
+
+					log.Println("client conn read failed: ", err.Error())
+					break
+				}
+			}
+		}()
+		conns[i] = conn
+	}
+
+	defer func() {
+		for i := range conns {
+			_ = conns[i].Close()
+		}
+	}()
+
+	for i := range conns {
+		conn := conns[i]
+		go func() {
+			for j := 0; j < execNum; j++ {
+				if err := conn.Send(buf); err != nil {
+					t.Error(err)
+					return
+				}
+			}
+		}()
+	}
+
+	go func() {
+		tick := time.Tick(time.Second * 2)
+		for {
+			select {
+			case <-complete:
+				return
+			case <-tick:
+				fmt.Println("count: ", count.Load())
+				fmt.Println("total: ", total)
+			}
+		}
+	}()
+
+	<-complete
 }

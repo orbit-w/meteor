@@ -24,21 +24,19 @@ import (
 
 // TcpClient implements the IConn interface with TCP.
 type TcpClient struct {
-	state           atomic.Uint32
-	lastAck         atomic.Int64
-	maxIncomingSize uint32
-	remoteAddr      string
-	remoteNodeId    string
-	currentNodeId   string
-	ctx             context.Context
-	cancel          context.CancelFunc
-	codec           *gnetwork.Codec
-	conn            net.Conn
-	buf             *ControlBuffer
-	sw              *sender_wrapper.SenderWrapper
-	r               *gnetwork.BlockReceiver
-	dHandle         func(remoteNodeId string)
-	writeTimeout    time.Duration
+	state            atomic.Uint32
+	lastAck          atomic.Int64
+	maxIncomingSize  uint32
+	remoteAddr       string
+	ctx              context.Context
+	cancel           context.CancelFunc
+	codec            *gnetwork.Codec
+	conn             net.Conn
+	buf              *ControlBuffer
+	sw               *sender_wrapper.SenderWrapper
+	r                *gnetwork.BlockReceiver
+	unregisterHandle func()
+	writeTimeout     time.Duration
 
 	connState int8       //代表链接状态
 	connCond  *sync.Cond //链接状态条件变量
@@ -61,20 +59,18 @@ func DialContextWithOps(ctx context.Context, remoteAddr string, _ops ...*DialOpt
 	buf := new(ControlBuffer)
 	BuildControlBuffer(buf, dp.MaxIncomingPacket)
 	tc := &TcpClient{
-		remoteAddr:      remoteAddr,
-		remoteNodeId:    dp.RemoteNodeId,
-		currentNodeId:   dp.CurrentNodeId,
-		dHandle:         dp.DisconnectHandler,
-		maxIncomingSize: dp.MaxIncomingPacket,
-		buf:             buf,
-		ctx:             _ctx,
-		cancel:          cancel,
-		codec:           gnetwork.NewCodec(dp.MaxIncomingPacket, false, dp.ReadTimeout),
-		r:               gnetwork.NewBlockReceiver(),
-		writeTimeout:    dp.WriteTimeout,
-		connCond:        sync.NewCond(&sync.Mutex{}),
-		connState:       idle,
-		logger:          newTcpClientPrefixLogger(),
+		remoteAddr:       remoteAddr,
+		unregisterHandle: dp.DisconnectHandler,
+		maxIncomingSize:  dp.MaxIncomingPacket,
+		buf:              buf,
+		ctx:              _ctx,
+		cancel:           cancel,
+		codec:            gnetwork.NewCodec(dp.MaxIncomingPacket, false, dp.ReadTimeout),
+		r:                gnetwork.NewBlockReceiver(),
+		writeTimeout:     dp.WriteTimeout,
+		connCond:         sync.NewCond(&sync.Mutex{}),
+		connState:        idle,
+		logger:           newTcpClientPrefixLogger(),
 	}
 
 	go tc.handleDial(dp)
@@ -118,8 +114,8 @@ func (tc *TcpClient) Close() error {
 
 func (tc *TcpClient) handleDial(_ *DialOption) {
 	defer func() {
-		if tc.dHandle != nil {
-			tc.dHandle(tc.remoteNodeId)
+		if tc.unregisterHandle != nil {
+			tc.unregisterHandle()
 		}
 		tc.buf.OnClose()
 	}()
@@ -149,6 +145,7 @@ func (tc *TcpClient) handleDial(_ *DialOption) {
 	tc.lastAck.Store(0)
 	tc.sw = sender_wrapper.NewSender(tc.SendData)
 	tc.buf.Run(tc.sw)
+	tc.remoteAddr = tc.conn.RemoteAddr().String()
 	go tc.keepalive()
 	<-tc.ctx.Done()
 }
@@ -332,8 +329,6 @@ func parseOptions(ops ...*DialOption) (dp *DialOption) {
 		if op.MaxIncomingPacket > 0 {
 			dp.MaxIncomingPacket = op.MaxIncomingPacket
 		}
-		dp.RemoteNodeId = op.RemoteNodeId
-		dp.CurrentNodeId = op.CurrentNodeId
 		dp.IsBlock = op.IsBlock
 		dp.IsGzip = op.IsGzip
 		dp.DisconnectHandler = op.DisconnectHandler
