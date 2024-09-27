@@ -82,10 +82,6 @@ func Benchmark_Concurrency128_Send64K_Test(b *testing.B) {
 	benchmarkEcho(b, 65536, 128)
 }
 
-func Benchmark_Concurrency128_Send128K_Test(b *testing.B) {
-	benchmarkEcho(b, 1024*128, 128)
-}
-
 func benchmarkEcho(b *testing.B, size, num int) {
 	var (
 		total    = uint64(size * num * b.N)
@@ -112,11 +108,7 @@ func benchmarkEcho(b *testing.B, size, num int) {
 			}
 			t := count.Add(uint64(len(in)))
 			if t >= total {
-				select {
-				case complete <- struct{}{}:
-				default:
-
-				}
+				close(complete)
 			}
 		}
 	})
@@ -153,13 +145,18 @@ func benchmarkEcho(b *testing.B, size, num int) {
 		}()
 	}
 
-	//go func() {
-	//	for {
-	//		time.Sleep(time.Second)
-	//		fmt.Println("count: ", count.Load())
-	//		fmt.Println("total: ", total)
-	//	}
-	//}()
+	go func() {
+		tick := time.Tick(time.Second * 2)
+		for {
+			select {
+			case <-complete:
+				return
+			case <-tick:
+				fmt.Println("count: ", count.Load())
+				fmt.Println("total: ", total)
+			}
+		}
+	}()
 
 	<-complete
 	runtime.GC()

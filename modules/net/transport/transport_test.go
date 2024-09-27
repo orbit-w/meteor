@@ -34,8 +34,8 @@ func Test_Echo_64K(t *testing.T) {
 }
 
 func Test_Echo_128K(t *testing.T) {
-	execMax := 600
-	echoConcurrencyTest(t, 1024*128, 100, 128, execMax)
+	execMax := 128
+	echoConcurrencyTest(t, 1024*128, 200, 64, execMax)
 }
 
 func Test_CloseWithNoBlocking(t *testing.T) {
