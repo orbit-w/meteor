@@ -41,10 +41,22 @@ func NewCodec(max uint32, _isGzip bool, _readTimeout time.Duration) *Codec {
 // EncodeBody 消息编码协议 body: size<int32> | gzipped<bool> | body<bytes>
 func (c *Codec) EncodeBody(body packet2.IPacket) (packet2.IPacket, error) {
 	defer packet2.Return(body)
-	return c.encodeBodyRaw(body.Data())
+	data := body.Data()
+	if c.isGzip {
+		compressed, err := EncodeGzip(data)
+		if err != nil {
+			return nil, EncodeGzipFailed(err)
+		}
+		data = compressed
+	}
+
+	w := packet2.WriterP(4 + 1 + len(data))
+	w.WriteInt32(int32(len(data)) + gzipSize)
+	w.WriteBool(c.isGzip)
+	w.Write(data)
+	return w, nil
 }
 
-// EncodeBody 消息编码协议 body: size<int32> | gzipped<bool> | body<bytes>
 func (c *Codec) encodeBodyRaw(data []byte) (packet2.IPacket, error) {
 	if c.isGzip {
 		compressed, err := EncodeGzip(data)

@@ -83,64 +83,43 @@ func Test_Transport(t *testing.T) {
 	_ = s.Stop()
 }
 
-func echoConcurrencyTest(t *testing.T, size, loopNum, cNum, max int) {
+func Test_Gzip(t *testing.T) {
 	viper.Set(mlog.FlagLogDir, "./transport.log")
-	for i := 0; i < loopNum; i++ {
-		execNum := number_utils.RandomInt(1, max)
-		testEcho(t, execNum, size, cNum)
-		time.Sleep(time.Millisecond * 500)
-	}
+	host := "127.0.0.1:6800"
+	s := ServeGzipTest(t, host, true)
+	ctx := context.Background()
+
+	conn := DialContextWithOps(context.Background(), host, DefaultGzipDialOption())
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	go func() {
+		for {
+			in, err := conn.Recv(ctx)
+			if err != nil {
+				if IsCancelError(err) || errors.Is(err, io.EOF) {
+					log.Println("EOF")
+				} else {
+					log.Println("Recv failed: ", err.Error())
+				}
+				break
+			}
+			log.Println("recv response: ", string(in))
+		}
+	}()
+
+	w := []byte("hello, world")
+	_ = conn.Send(w)
+
+	time.Sleep(time.Second * 10)
+	_ = s.Stop()
 }
 
 func Test_parseConfig(t *testing.T) {
 	var conf *Config
 	parseConfig(&conf)
 	fmt.Println(conf.MaxIncomingPacket)
-}
-
-func ServeTest(t TestingT, host string, print bool) IServer {
-	var (
-		server IServer
-		err    error
-		ctx    = context.Background()
-	)
-	ServeOnce.Do(func() {
-		server, err = Serve("tcp", host, func(conn IConn) {
-			for {
-				in, err := conn.Recv(ctx)
-				if err != nil {
-					if IsClosedConnError(err) {
-						break
-					}
-
-					if IsCancelError(err) || errors.Is(err, io.EOF) {
-						break
-					}
-
-					log.Println("conn read mux failed: ", err.Error())
-					break
-				}
-				if print {
-					fmt.Println("receive message from client: ", string(in))
-				}
-				if err = conn.Send(in); err != nil {
-					log.Println("server response failed: ", err.Error())
-				}
-			}
-		})
-	})
-
-	if err != nil {
-		panic(err.Error())
-	}
-	return server
-}
-
-func serveTestWithHandler(t assert.TestingT, handle func(conn IConn)) IServer {
-	host := "localhost:0"
-	server, err := Serve("tcp", host, handle)
-	assert.NoError(t, err)
-	return server
 }
 
 func Test_Logger(t *testing.T) {
@@ -174,6 +153,15 @@ func Test_Logger(t *testing.T) {
 // TestingT is an interface wrapper around *testing.T
 type TestingT interface {
 	Errorf(format string, args ...interface{})
+}
+
+func echoConcurrencyTest(t *testing.T, size, loopNum, cNum, max int) {
+	viper.Set(mlog.FlagLogDir, "./transport.log")
+	for i := 0; i < loopNum; i++ {
+		execNum := number_utils.RandomInt(1, max)
+		testEcho(t, execNum, size, cNum)
+		time.Sleep(time.Millisecond * 500)
+	}
 }
 
 func testEcho(t *testing.T, execNum, size, num int) {
@@ -257,4 +245,57 @@ func testEcho(t *testing.T, execNum, size, num int) {
 	}()
 
 	<-complete
+}
+
+func serveTestWithHandler(t assert.TestingT, handle func(conn IConn)) IServer {
+	host := "localhost:0"
+	server, err := Serve("tcp", host, handle)
+	assert.NoError(t, err)
+	return server
+}
+
+func ServeTest(t TestingT, host string, print bool) IServer {
+	return serveTest(t, host, print, DefaultServerConfig())
+}
+
+func ServeGzipTest(t TestingT, host string, print bool) IServer {
+	return serveTest(t, host, print, DefaultGzipServerConfig())
+}
+
+func serveTest(t TestingT, host string, print bool, conf *Config) IServer {
+	var (
+		server IServer
+		err    error
+		ctx    = context.Background()
+	)
+	ServeOnce.Do(func() {
+		server, err = ServeByConfig("tcp", host, func(conn IConn) {
+			for {
+				in, err := conn.Recv(ctx)
+				if err != nil {
+					if IsClosedConnError(err) {
+						break
+					}
+
+					if IsCancelError(err) || errors.Is(err, io.EOF) {
+						break
+					}
+
+					log.Println("conn read mux failed: ", err.Error())
+					break
+				}
+				if print {
+					fmt.Println("receive message from client: ", string(in))
+				}
+				if err = conn.Send(in); err != nil {
+					log.Println("server response failed: ", err.Error())
+				}
+			}
+		}, conf)
+	})
+
+	if err != nil {
+		panic(err.Error())
+	}
+	return server
 }

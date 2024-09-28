@@ -68,6 +68,16 @@ func DefaultServerConfig() *Config {
 	}
 }
 
+func DefaultGzipServerConfig() *Config {
+	return &Config{
+		MaxIncomingPacket: MaxIncomingPacket,
+		IsGzip:            true,
+		ReadTimeout:       ReadTimeout,
+		WriteTimeout:      WriteTimeout,
+		Stage:             DEV,
+	}
+}
+
 func parseConfig(conf **Config) {
 	if *conf == nil {
 		*conf = DefaultServerConfig()

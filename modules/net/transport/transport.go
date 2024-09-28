@@ -47,6 +47,14 @@ func DefaultDialOption() *DialOption {
 	}
 }
 
+func DefaultGzipDialOption() *DialOption {
+	return &DialOption{
+		MaxIncomingPacket: MaxIncomingPacket,
+		IsBlock:           false,
+		IsGzip:            true,
+	}
+}
+
 type ConnOption struct {
 	MaxIncomingPacket uint32
 }
