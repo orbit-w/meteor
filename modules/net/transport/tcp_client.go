@@ -65,7 +65,7 @@ func DialContextWithOps(ctx context.Context, remoteAddr string, _ops ...*DialOpt
 		buf:              buf,
 		ctx:              _ctx,
 		cancel:           cancel,
-		codec:            gnetwork.NewCodec(dp.MaxIncomingPacket, false, dp.ReadTimeout),
+		codec:            gnetwork.NewCodec(dp.MaxIncomingPacket, dp.IsGzip, dp.ReadTimeout),
 		r:                gnetwork.NewBlockReceiver(),
 		writeTimeout:     dp.WriteTimeout,
 		connCond:         sync.NewCond(&sync.Mutex{}),
@@ -190,6 +190,7 @@ func (tc *TcpClient) reader() {
 	body := make([]byte, tc.maxIncomingSize)
 
 	var (
+		in    []byte
 		err   error
 		bytes []byte
 	)
@@ -218,25 +219,27 @@ func (tc *TcpClient) reader() {
 	tc.ack()
 
 	for {
-		var in packet2.IPacket
 		in, err = tc.recv(header, body)
 		if err != nil {
 			return
 		}
 
 		tc.ack()
-		for len(in.Remain()) > 0 {
-			bytes, err = in.ReadBytes32()
-			if err != nil {
-				break
+		if len(in) > 0 {
+			r := packet2.ReaderP(in)
+			for len(r.Remain()) > 0 {
+				bytes, err = r.ReadBytes32()
+				if err != nil {
+					break
+				}
+				_ = tc.decodeRspAndDispatch(bytes)
 			}
-			_ = tc.decodeRspAndDispatch(bytes)
+			packet2.Return(r)
 		}
-		packet2.Return(in)
 	}
 }
 
-func (tc *TcpClient) recv(header []byte, body []byte) (packet2.IPacket, error) {
+func (tc *TcpClient) recv(header []byte, body []byte) ([]byte, error) {
 	in, err := tc.codec.BlockDecodeBody(tc.conn, header, body)
 	if err != nil {
 		return nil, err

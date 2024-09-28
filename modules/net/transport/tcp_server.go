@@ -32,7 +32,7 @@ func (t *TcpServer) Serve(host string, _handle func(conn IConn), op gnetwork.Acc
 	server := new(gnetwork.Server)
 	server.Serve(gnetwork.TCP, listener, func(ctx context.Context, generic net.Conn, maxIncomingPacket uint32, head, body []byte,
 		readTO, writeTO time.Duration) {
-		conn := NewTcpServerConn(ctx, generic, maxIncomingPacket, head, body, readTO, writeTO)
+		conn := NewTcpServerConn(ctx, generic, maxIncomingPacket, head, body, readTO, writeTO, op.IsGzip)
 		defer func() {
 			_ = conn.Close()
 		}()

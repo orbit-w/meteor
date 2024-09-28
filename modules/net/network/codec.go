@@ -2,6 +2,7 @@ package network
 
 import (
 	"encoding/binary"
+	"errors"
 	packet2 "github.com/orbit-w/meteor/modules/net/packet"
 	"io"
 	"net"
@@ -73,7 +74,10 @@ func (c *Codec) encodeBodyRaw(data []byte) (packet2.IPacket, error) {
 	return w, nil
 }
 
-func (c *Codec) BlockDecodeBody(conn net.Conn, header, body []byte) (packet2.IPacket, error) {
+// BlockDecodeBody 消息解码协议 body: size<int32> | gzipped<bool> | body<bytes>
+// Returns the decoded data as []byte. Note: []byte needs to be handled by the user, deep copy required.
+// 返回解码后的数据[]byte, 注意：[]byte需要自行处理数据，深拷贝。否则会出现脏数据。
+func (c *Codec) BlockDecodeBody(conn net.Conn, header, body []byte) ([]byte, error) {
 	err := conn.SetReadDeadline(time.Now().Add(c.readTimeout))
 	if err != nil {
 		return nil, err
@@ -94,25 +98,19 @@ func (c *Codec) BlockDecodeBody(conn net.Conn, header, body []byte) (packet2.IPa
 		return nil, ReadBodyFailed(err)
 	}
 
-	buf := packet2.ReaderP(body)
-	return c.decodeBody(buf)
+	return c.decodeBody(body)
 }
 
-func (c *Codec) decodeBody(buf packet2.IPacket) (packet2.IPacket, error) {
-	gzipped, err := buf.ReadBool()
-	if err != nil {
-		return nil, err
+func (c *Codec) decodeBody(data []byte) ([]byte, error) {
+	if len(data) < 1 {
+		return nil, errors.New("read_bool_failed")
 	}
+	b := data[0]
+	gzipped := b == byte(1)
+	data = data[1:]
 
-	if !gzipped {
-		return buf, nil
+	if !gzipped || len(data) == 0 {
+		return data, nil
 	}
-	return DecodeGzip(buf)
-}
-
-func (c *Codec) checkPacketSize(header []byte) error {
-	if size := binary.BigEndian.Uint32(header); size > c.maxIncomingSize {
-		return ExceedMaxIncomingPacket(size)
-	}
-	return nil
+	return DecodeGzip(data)
 }

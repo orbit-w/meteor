@@ -3,7 +3,6 @@ package network
 import (
 	"bytes"
 	"compress/gzip"
-	packet2 "github.com/orbit-w/meteor/modules/net/packet"
 	"io"
 	"sync"
 )
@@ -30,31 +29,31 @@ func EncodeGzip(data []byte) ([]byte, error) {
 	writer := gzip.NewWriter(buf)
 
 	// Write the data to the gzip writer
-	_, err := writer.Write(data)
-	if err != nil {
+	if _, err := writer.Write(data); err != nil {
+		_ = writer.Close() // Ensure writer is closed on error
 		return nil, err
 	}
 
 	// Close the gzip writer to ensure all data is flushed
-	err = writer.Close()
-	if err != nil {
+	if err := writer.Close(); err != nil {
 		return nil, err
 	}
+
+	// Copy the compressed data to a new slice before returning
+	compressedData := make([]byte, buf.Len())
+	copy(compressedData, buf.Bytes())
 
 	// Return the compressed data
-	return buf.Bytes(), nil
+	return compressedData, nil
 }
 
-func DecodeGzip(buf packet2.IPacket) (packet2.IPacket, error) {
+func DecodeGzip(buf []byte) ([]byte, error) {
 	// Create a new gzip reader for the bytes buffer
-	reader, err := gzip.NewReader(buf)
+	reader, err := gzip.NewReader(bytes.NewReader(buf))
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		_ = reader.Close()
-		packet2.Return(buf)
-	}()
+	defer reader.Close()
 
 	// Read all the decompressed data
 	decompressedData, err := io.ReadAll(reader)
@@ -62,7 +61,6 @@ func DecodeGzip(buf packet2.IPacket) (packet2.IPacket, error) {
 		return nil, err
 	}
 
-	// TODO: 解压缩后消息包体大小不可控，目前packet.ReaderP()最大支持65536字节!!
-	r := packet2.ReaderP(decompressedData)
-	return r, nil
+	// Return the decompressed data
+	return decompressedData, nil
 }

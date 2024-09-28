@@ -30,14 +30,15 @@ type TcpServerConn struct {
 	writeTimeout time.Duration
 }
 
-func NewTcpServerConn(ctx context.Context, _conn net.Conn, maxIncomingPacket uint32, head, body []byte, readTO, writeTO time.Duration) IConn {
+func NewTcpServerConn(ctx context.Context, _conn net.Conn, maxIncomingPacket uint32, head, body []byte,
+	readTO, writeTO time.Duration, isGzip bool) IConn {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	cCtx, cancel := context.WithCancel(ctx)
 	ts := &TcpServerConn{
 		conn:         _conn,
-		codec:        network2.NewCodec(maxIncomingPacket, false, readTO),
+		codec:        network2.NewCodec(maxIncomingPacket, isGzip, readTO),
 		ctx:          cCtx,
 		cancel:       cancel,
 		r:            network2.NewBlockReceiver(),
@@ -94,7 +95,7 @@ func (ts *TcpServerConn) SendData(body packet2.IPacket) error {
 func (ts *TcpServerConn) HandleLoop(header, body []byte) {
 	var (
 		err  error
-		data packet2.IPacket
+		data []byte
 	)
 
 	defer utils.RecoverPanic()
@@ -127,12 +128,15 @@ func (ts *TcpServerConn) HandleLoop(header, body []byte) {
 	}
 }
 
-func (ts *TcpServerConn) OnData(data packet2.IPacket) error {
-	defer packet2.Return(data)
-	for len(data.Remain()) > 0 {
-		if bytes, err := data.ReadBytes32(); err == nil {
-			_ = ts.HandleData(bytes)
+func (ts *TcpServerConn) OnData(data []byte) error {
+	if len(data) > 0 {
+		r := packet2.ReaderP(data)
+		for len(r.Remain()) > 0 {
+			if bytes, err := r.ReadBytes32(); err == nil {
+				_ = ts.HandleData(bytes)
+			}
 		}
+		packet2.Return(r)
 	}
 	return nil
 }
