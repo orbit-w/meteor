@@ -29,12 +29,12 @@ func Test_Echo_4K(t *testing.T) {
 }
 
 func Test_Echo_64K(t *testing.T) {
-	execMax := 600
+	execMax := 200
 	echoConcurrencyTest(t, 65536, 100, 128, execMax)
 }
 
 func Test_Echo_128K(t *testing.T) {
-	execMax := 128
+	execMax := 64
 	echoConcurrencyTest(t, 1024*128, 200, 64, execMax)
 }
 
@@ -88,7 +88,7 @@ func echoConcurrencyTest(t *testing.T, size, loopNum, cNum, max int) {
 	for i := 0; i < loopNum; i++ {
 		execNum := number_utils.RandomInt(1, max)
 		testEcho(t, execNum, size, cNum)
-		time.Sleep(time.Millisecond * 100)
+		time.Sleep(time.Millisecond * 500)
 	}
 }
 

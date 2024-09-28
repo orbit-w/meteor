@@ -14,17 +14,13 @@ import (
 
 type SenderWrapper struct {
 	sender func(body packet.IPacket) error
-	ch     *unbounded.Unbounded[sendParams]
-}
-
-type sendParams struct {
-	buf packet.IPacket
+	ch     *unbounded.Unbounded[packet.IPacket]
 }
 
 func NewSender(sender func(body packet.IPacket) error) *SenderWrapper {
 	ins := &SenderWrapper{
 		sender: sender,
-		ch:     unbounded.NewUnbounded[sendParams](2048),
+		ch:     unbounded.NewUnbounded[packet.IPacket](2048),
 	}
 
 	go func() {
@@ -34,8 +30,8 @@ func NewSender(sender func(body packet.IPacket) error) *SenderWrapper {
 			}
 		}()
 
-		ins.ch.Receive(func(msg sendParams) bool {
-			_ = ins.sender(msg.buf)
+		ins.ch.Receive(func(msg packet.IPacket) bool {
+			_ = ins.sender(msg)
 			return false
 		})
 	}()
@@ -44,7 +40,7 @@ func NewSender(sender func(body packet.IPacket) error) *SenderWrapper {
 }
 
 func (ins *SenderWrapper) Send(data packet.IPacket) error {
-	return ins.ch.Send(sendParams{data})
+	return ins.ch.Send(data)
 }
 
 func (ins *SenderWrapper) OnClose() {
