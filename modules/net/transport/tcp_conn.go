@@ -131,14 +131,13 @@ func (ts *TcpServerConn) OnData(data packet2.IPacket) error {
 	defer packet2.Return(data)
 	for len(data.Remain()) > 0 {
 		if bytes, err := data.ReadBytes32(); err == nil {
-			reader := packet2.ReaderP(bytes)
-			_ = ts.HandleData(reader)
+			_ = ts.HandleData(bytes)
 		}
 	}
 	return nil
 }
 
-func (ts *TcpServerConn) HandleData(in packet2.IPacket) error {
+func (ts *TcpServerConn) HandleData(in []byte) error {
 	err := unpackHeadByte(in, func(head int8, data []byte) {
 		switch head {
 		case TypeMessageHeartbeat:

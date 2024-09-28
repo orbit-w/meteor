@@ -230,8 +230,7 @@ func (tc *TcpClient) reader() {
 			if err != nil {
 				break
 			}
-			reader := packet2.ReaderP(bytes)
-			_ = tc.decodeRspAndDispatch(reader)
+			_ = tc.decodeRspAndDispatch(bytes)
 		}
 		packet2.Return(in)
 	}
@@ -245,8 +244,8 @@ func (tc *TcpClient) recv(header []byte, body []byte) (packet2.IPacket, error) {
 	return in, err
 }
 
-func (tc *TcpClient) decodeRspAndDispatch(body packet2.IPacket) error {
-	err := unpackHeadByte(body, func(head int8, data []byte) {
+func (tc *TcpClient) decodeRspAndDispatch(bytes []byte) error {
+	err := unpackHeadByte(bytes, func(head int8, data []byte) {
 		switch head {
 		case TypeMessageHeartbeat, TypeMessageHeartbeatAck:
 			return

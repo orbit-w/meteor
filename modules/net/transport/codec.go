@@ -31,14 +31,14 @@ func packHeadByteP(pack packet2.IPacket, mt int8) packet2.IPacket {
 	return writer
 }
 
-func unpackHeadByte(pack packet2.IPacket, handle func(h int8, data []byte)) error {
-	defer packet2.Return(pack)
-	head, err := pack.ReadInt8()
+func unpackHeadByte(data []byte, handle func(h int8, data []byte)) error {
+	reader := packet2.ReaderP(data)
+	defer packet2.Return(reader)
+	head, err := reader.ReadInt8()
 	if err != nil {
 		return err
 	}
 
-	data := pack.CopyRemain()
-	handle(head, data)
+	handle(head, reader.CopyRemain())
 	return nil
 }
