@@ -144,6 +144,8 @@ func (ts *TcpServerConn) OnData(data []byte) error {
 func (ts *TcpServerConn) HandleData(in []byte) error {
 	err := unpackHeadByte(in, func(head int8, data []byte) {
 		switch head {
+		case TypeMessageRaw:
+			ts.r.Put(data, nil)
 		case TypeMessageHeartbeat:
 			ack := packHeadByte(nil, TypeMessageHeartbeatAck)
 			_ = ts.buf.Set(ack)

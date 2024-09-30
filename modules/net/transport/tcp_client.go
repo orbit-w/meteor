@@ -219,7 +219,7 @@ func (tc *TcpClient) reader() {
 	tc.ack()
 
 	for {
-		in, err = tc.recv(header, body)
+		in, err = tc.codec.BlockDecodeBody(tc.conn, header, body)
 		if err != nil {
 			return
 		}
@@ -239,17 +239,13 @@ func (tc *TcpClient) reader() {
 	}
 }
 
-func (tc *TcpClient) recv(header []byte, body []byte) ([]byte, error) {
-	in, err := tc.codec.BlockDecodeBody(tc.conn, header, body)
-	if err != nil {
-		return nil, err
-	}
-	return in, err
-}
-
 func (tc *TcpClient) decodeRspAndDispatch(bytes []byte) error {
 	err := unpackHeadByte(bytes, func(head int8, data []byte) {
 		switch head {
+		case TypeMessageRaw:
+			if data != nil && len(data) != 0 {
+				tc.r.Put(data, nil)
+			}
 		case TypeMessageHeartbeat, TypeMessageHeartbeatAck:
 			return
 		default:
