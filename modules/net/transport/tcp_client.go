@@ -28,6 +28,7 @@ type TcpClient struct {
 	lastAck          atomic.Int64
 	maxIncomingSize  uint32
 	remoteAddr       string
+	localAddr        string
 	ctx              context.Context
 	cancel           context.CancelFunc
 	codec            *mnetwork.Codec
@@ -136,7 +137,9 @@ func (tc *TcpClient) handleDial(_ *DialOption) {
 
 	tc.sw = sender_wrapper.NewSender(tc.SendData)
 	tc.buf.Run(tc.sw)
+	tc.conn.LocalAddr().String()
 	tc.remoteAddr = tc.conn.RemoteAddr().String()
+	tc.localAddr = tc.conn.LocalAddr().String()
 	go tc.keepalive()
 	<-tc.ctx.Done()
 }
@@ -221,7 +224,8 @@ func (tc *TcpClient) reader() {
 
 		switch head {
 		case mnetwork.TypeMessageHeartbeat:
-			tc.logger.Info("Receive heartbeat ack", zap.String("RemoteAddr", tc.remoteAddr), zap.Time("Time", time.Now()))
+			tc.logger.Info("Receive heartbeat ack", zap.String("RemoteAddr", tc.remoteAddr),
+				zap.Time("Time", time.Now()), zap.String("LocalAddr", tc.localAddr))
 		default:
 			if len(in) > 0 {
 				r := packet2.ReaderP(in)
