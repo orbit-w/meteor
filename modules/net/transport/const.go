@@ -47,12 +47,6 @@ const (
 	GzippedSize = 1
 )
 
-const (
-	TypeMessageRaw = iota
-	TypeMessageHeartbeat
-	TypeMessageHeartbeatAck
-)
-
 type Stage uint32
 
 const (

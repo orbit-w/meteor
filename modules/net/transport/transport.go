@@ -3,7 +3,6 @@ package transport
 import (
 	"context"
 	"github.com/orbit-w/meteor/modules/net/network"
-	"github.com/orbit-w/meteor/modules/net/packet"
 	"time"
 )
 
@@ -17,9 +16,6 @@ import (
 // that can send and receive data.
 type IConn interface {
 	Send(data []byte) error
-	// SendPack TcpServerConn obj does not implicitly call IPacket.Return to return the
-	// packet to the pool, and the user needs to explicitly call it.
-	SendPack(out packet.IPacket) (err error)
 	Recv(ctx context.Context) ([]byte, error)
 	Close() error
 }

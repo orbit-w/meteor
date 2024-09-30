@@ -5,7 +5,7 @@ import (
 	"github.com/orbit-w/meteor/bases/misc/number_utils"
 	"github.com/orbit-w/meteor/bases/misc/utils"
 	"github.com/orbit-w/meteor/modules/mlog"
-	gnetwork "github.com/orbit-w/meteor/modules/net/network"
+	mnetwork "github.com/orbit-w/meteor/modules/net/network"
 	packet2 "github.com/orbit-w/meteor/modules/net/packet"
 	"github.com/orbit-w/meteor/modules/wrappers/sender_wrapper"
 	"go.uber.org/zap"
@@ -30,11 +30,11 @@ type TcpClient struct {
 	remoteAddr       string
 	ctx              context.Context
 	cancel           context.CancelFunc
-	codec            *gnetwork.Codec
+	codec            *mnetwork.Codec
 	conn             net.Conn
 	buf              *ControlBuffer
 	sw               *sender_wrapper.SenderWrapper
-	r                *gnetwork.BlockReceiver
+	r                *mnetwork.BlockReceiver
 	unregisterHandle func()
 	writeTimeout     time.Duration
 
@@ -65,8 +65,8 @@ func DialContextWithOps(ctx context.Context, remoteAddr string, _ops ...*DialOpt
 		buf:              buf,
 		ctx:              _ctx,
 		cancel:           cancel,
-		codec:            gnetwork.NewCodec(dp.MaxIncomingPacket, dp.IsGzip, dp.ReadTimeout),
-		r:                gnetwork.NewBlockReceiver(),
+		codec:            mnetwork.NewCodec(dp.MaxIncomingPacket, dp.IsGzip, dp.ReadTimeout),
+		r:                mnetwork.NewBlockReceiver(),
 		writeTimeout:     dp.WriteTimeout,
 		connCond:         sync.NewCond(&sync.Mutex{}),
 		connState:        idle,
@@ -78,18 +78,10 @@ func DialContextWithOps(ctx context.Context, remoteAddr string, _ops ...*DialOpt
 }
 
 func (tc *TcpClient) Send(out []byte) error {
-	pack := packHeadByte(out, TypeMessageRaw)
-	defer packet2.Return(pack)
-	err := tc.buf.Set(pack)
-	return err
-}
-
-// SendPack TcpClient obj does not implicitly call IPacket.Return to return the
-// packet to the pool, and the user needs to explicitly call it.
-func (tc *TcpClient) SendPack(out packet2.IPacket) error {
-	pack := packHeadByteP(out, TypeMessageRaw)
-	defer packet2.Return(pack)
-	err := tc.buf.Set(pack)
+	if len(out) == 0 {
+		return nil
+	}
+	err := tc.buf.SetData(out)
 	return err
 }
 
@@ -150,8 +142,9 @@ func (tc *TcpClient) handleDial(_ *DialOption) {
 	<-tc.ctx.Done()
 }
 
-func (tc *TcpClient) SendData(data packet2.IPacket) error {
-	err := tc.sendData(data)
+func (tc *TcpClient) SendData(pack packet2.IPacket) error {
+	defer packet2.Return(pack)
+	err := tc.sendData(pack.Data())
 	if err != nil {
 		if tc.conn != nil {
 			_ = tc.conn.Close()
@@ -160,8 +153,8 @@ func (tc *TcpClient) SendData(data packet2.IPacket) error {
 	return err
 }
 
-func (tc *TcpClient) sendData(data packet2.IPacket) error {
-	body, err := tc.codec.EncodeBody(data)
+func (tc *TcpClient) sendData(data []byte) error {
+	body, err := tc.codec.EncodeBody(data, mnetwork.TypeMessageRaw)
 	if err != nil {
 		return err
 	}
@@ -193,6 +186,7 @@ func (tc *TcpClient) reader() {
 		in    []byte
 		err   error
 		bytes []byte
+		head  int8
 	)
 
 	defer utils.RecoverPanic()
@@ -219,47 +213,41 @@ func (tc *TcpClient) reader() {
 	tc.ack()
 
 	for {
-		in, err = tc.codec.BlockDecodeBody(tc.conn, header, body)
+		in, head, err = tc.codec.BlockDecodeBody(tc.conn, header, body)
 		if err != nil {
 			return
 		}
 
 		tc.ack()
-		if len(in) > 0 {
-			r := packet2.ReaderP(in)
-			for len(r.Remain()) > 0 {
-				bytes, err = r.ReadBytes32()
-				if err != nil {
-					break
+
+		switch head {
+		case mnetwork.TypeMessageHeartbeat:
+		default:
+			if len(in) > 0 {
+				r := packet2.ReaderP(in)
+				for len(r.Remain()) > 0 {
+					bytes, err = r.ReadBytes32()
+					if err != nil {
+						break
+					}
+					tc.dispatch(bytes)
 				}
-				_ = tc.decodeRspAndDispatch(bytes)
+				packet2.Return(r)
 			}
-			packet2.Return(r)
 		}
 	}
 }
 
-func (tc *TcpClient) decodeRspAndDispatch(bytes []byte) error {
-	err := unpackHeadByte(bytes, func(head int8, data []byte) {
-		switch head {
-		case TypeMessageRaw:
-			if data != nil && len(data) != 0 {
-				tc.r.Put(data, nil)
-			}
-		case TypeMessageHeartbeat, TypeMessageHeartbeatAck:
-			return
-		default:
-			if data != nil && len(data) != 0 {
-				tc.r.Put(data, nil)
-			}
-		}
-	})
-	return err
+func (tc *TcpClient) dispatch(bytes []byte) {
+	if bytes != nil && len(bytes) != 0 {
+		tc.r.Put(bytes, nil)
+	}
 }
 
 func (tc *TcpClient) keepalive() {
 	ticker := time.NewTicker(time.Second)
-	ping := packHeadByte(nil, TypeMessageHeartbeat)
+	codec := mnetwork.NewCodec(MaxIncomingPacket, false, 0)
+	ping, _ := codec.EncodeBody(nil, mnetwork.TypeMessageHeartbeat)
 	defer packet2.Return(ping)
 
 	prev := time.Now().Unix()
@@ -284,7 +272,9 @@ func (tc *TcpClient) keepalive() {
 			}
 
 			if !outstandingPing {
-				_ = tc.buf.Set(ping)
+				_ = tc.conn.SetWriteDeadline(time.Now().Add(tc.writeTimeout))
+				_, _ = tc.conn.Write(ping.Data())
+
 				outstandingPing = true
 				timeout = PingTimeOut
 			}

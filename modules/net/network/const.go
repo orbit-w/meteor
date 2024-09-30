@@ -20,3 +20,8 @@ const (
 	ReadTimeout  = time.Second * 60
 	WriteTimeout = time.Second * 5
 )
+
+const (
+	TypeMessageRaw = iota
+	TypeMessageHeartbeat
+)
