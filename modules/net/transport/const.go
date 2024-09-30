@@ -16,7 +16,7 @@ const (
 )
 
 const (
-	BatchLimit   = 100
+	BatchLimit   = 50
 	PingTimeOut  = time.Second * 30
 	AckInterval  = time.Second * 10
 	MaxRetried   = 5

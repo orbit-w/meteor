@@ -82,7 +82,7 @@ func (ins *ControlBuffer) Kick() {
 	}
 }
 
-func (ins *ControlBuffer) SetData(data []byte) error {
+func (ins *ControlBuffer) Set(data []byte) error {
 	ins.mu.Lock()
 	if ins.state == TypeStopped {
 		ins.mu.Unlock()
@@ -91,30 +91,6 @@ func (ins *ControlBuffer) SetData(data []byte) error {
 	var kick bool
 	ins.length++
 	ins.buffer.WriteBytes32(data)
-	if ins.consumerWaiting {
-		kick = true
-		ins.consumerWaiting = false
-	}
-	ins.mu.Unlock()
-	if kick {
-		select {
-		case ins.ch <- struct{}{}:
-		default:
-		}
-	}
-	return nil
-}
-
-func (ins *ControlBuffer) Set(buf packet2.IPacket) error {
-	ins.mu.Lock()
-	if ins.state == TypeStopped {
-		ins.mu.Unlock()
-		return ErrDisconnected
-	}
-	var kick bool
-	ins.length++
-	d := buf.Data()
-	ins.buffer.WriteBytes32(d)
 	if ins.consumerWaiting {
 		kick = true
 		ins.consumerWaiting = false

@@ -81,7 +81,7 @@ func (tc *TcpClient) Send(out []byte) error {
 	if len(out) == 0 {
 		return nil
 	}
-	err := tc.buf.SetData(out)
+	err := tc.buf.Set(out)
 	return err
 }
 

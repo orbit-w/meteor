@@ -64,7 +64,7 @@ func (ts *TcpServerConn) Send(data []byte) (err error) {
 		return nil
 	}
 
-	err = ts.buf.SetData(data)
+	err = ts.buf.Set(data)
 	return
 }
 
