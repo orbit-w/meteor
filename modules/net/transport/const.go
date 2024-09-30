@@ -18,7 +18,7 @@ const (
 const (
 	BatchLimit   = 100
 	PingTimeOut  = time.Second * 30
-	AckInterval  = time.Second * 5
+	AckInterval  = time.Second * 10
 	MaxRetried   = 5
 	HeadLen      = 4 //包头字节数
 	ReadTimeout  = time.Second * 60

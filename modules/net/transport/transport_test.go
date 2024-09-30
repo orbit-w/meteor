@@ -45,6 +45,13 @@ func Test_CloseWithNoBlocking(t *testing.T) {
 	_ = conn.Close()
 }
 
+func Test_Heartbeat(t *testing.T) {
+	host := "127.0.0.1:6800"
+	ServeTest(t, host, true)
+	DialContextByDefaultOp(context.Background(), host)
+	time.Sleep(time.Minute * 10)
+}
+
 func Test_Addr(t *testing.T) {
 	host := "localhost:0"
 	s := ServeTest(t, host, true)

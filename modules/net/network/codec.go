@@ -40,8 +40,8 @@ func NewCodec(max uint32, _isGzip bool, _readTimeout time.Duration) *Codec {
 	}
 }
 
-// EncodeBody 消息编码协议 body: size<int32> | gzipped<bool> | type<int8> | body<bytes>
-func (c *Codec) EncodeBody(data []byte, h int8) (packet2.IPacket, error) {
+// Encode 消息编码协议 body: size<int32> | gzipped<bool> | type<int8> | body<bytes>
+func (c *Codec) Encode(data []byte, h int8) (packet2.IPacket, error) {
 	if c.isGzip {
 		compressed, err := EncodeGzip(data)
 		if err != nil {
@@ -59,22 +59,14 @@ func (c *Codec) EncodeBody(data []byte, h int8) (packet2.IPacket, error) {
 	return w, nil
 }
 
-func (c *Codec) encodeBodyRaw(data []byte, h int8) (packet2.IPacket, error) {
-	if c.isGzip {
-		compressed, err := EncodeGzip(data)
-		if err != nil {
-			return nil, EncodeGzipFailed(err)
-		}
-		data = compressed
-	}
-
+func (c *Codec) EncodeBody(data []byte, h int8) packet2.IPacket {
 	l := gzipSize + headSize + len(data)
 	w := packet2.WriterP(4 + l)
 	w.WriteInt32(int32(l))
 	w.WriteBool(c.isGzip)
 	w.WriteInt8(h)
 	w.Write(data)
-	return w, nil
+	return w
 }
 
 // BlockDecodeBody 消息解码协议 body: size<int32> | gzipped<bool> | type<int8> | body<bytes>

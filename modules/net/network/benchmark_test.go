@@ -11,7 +11,7 @@ func BenchmarkCodec_EncodeBody128K(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		if _, err := codec.encodeBodyRaw(buf, 0); err != nil {
+		if _, err := codec.EncodeBody(buf, 0); err != nil {
 			b.Error(err)
 		}
 	}

@@ -3,9 +3,11 @@ package transport
 import (
 	"context"
 	"github.com/orbit-w/meteor/bases/misc/utils"
+	"github.com/orbit-w/meteor/modules/mlog"
 	mnetwork "github.com/orbit-w/meteor/modules/net/network"
 	packet2 "github.com/orbit-w/meteor/modules/net/packet"
 	"github.com/orbit-w/meteor/modules/wrappers/sender_wrapper"
+	"go.uber.org/zap"
 	"io"
 	"net"
 	"time"
@@ -19,6 +21,7 @@ import (
 
 type TcpServerConn struct {
 	authed bool
+	addr   string
 	conn   net.Conn
 	codec  *mnetwork.Codec
 	ctx    context.Context
@@ -26,6 +29,7 @@ type TcpServerConn struct {
 	sw     *sender_wrapper.SenderWrapper
 	buf    *ControlBuffer
 	r      *mnetwork.BlockReceiver
+	logger *mlog.ZapLogger
 
 	writeTimeout time.Duration
 }
@@ -38,11 +42,13 @@ func NewTcpServerConn(ctx context.Context, _conn net.Conn, maxIncomingPacket uin
 	cCtx, cancel := context.WithCancel(ctx)
 	ts := &TcpServerConn{
 		conn:         _conn,
+		addr:         _conn.RemoteAddr().String(),
 		codec:        mnetwork.NewCodec(maxIncomingPacket, isGzip, readTO),
 		ctx:          cCtx,
 		cancel:       cancel,
 		r:            mnetwork.NewBlockReceiver(),
 		writeTimeout: writeTO,
+		logger:       newTcpServerConnPrefixLogger(),
 	}
 
 	sw := sender_wrapper.NewSender(ts.SendData)
@@ -74,15 +80,26 @@ func (ts *TcpServerConn) Close() error {
 // coding: size<int32> | gzipped<bool> | body<bytes>
 func (ts *TcpServerConn) SendData(out packet2.IPacket) error {
 	defer packet2.Return(out)
-	pack, err := ts.codec.EncodeBody(out.Data(), mnetwork.TypeMessageRaw)
+	pack, err := ts.codec.Encode(out.Data(), mnetwork.TypeMessageRaw)
 	if err != nil {
 		return err
 	}
 	defer packet2.Return(pack)
-	if err = ts.conn.SetWriteDeadline(time.Now().Add(ts.writeTimeout)); err != nil {
+
+	if err = ts.sendData(pack.Data()); err != nil {
+		if ts.conn != nil {
+			_ = ts.conn.Close()
+		}
 		return err
 	}
-	_, err = ts.conn.Write(pack.Data())
+	return nil
+}
+
+func (ts *TcpServerConn) sendData(data []byte) error {
+	if err := ts.conn.SetWriteDeadline(time.Now().Add(ts.writeTimeout)); err != nil {
+		return err
+	}
+	_, err := ts.conn.Write(data)
 	return err
 }
 
@@ -119,11 +136,13 @@ func (ts *TcpServerConn) HandleLoop(header, body []byte) {
 
 		switch head {
 		case mnetwork.TypeMessageHeartbeat:
-			if ack, err := ts.codec.EncodeBody(nil, mnetwork.TypeMessageHeartbeat); err == nil {
-				_ = ts.conn.SetWriteDeadline(time.Now().Add(ts.writeTimeout))
-				_, err = ts.conn.Write(ack.Data())
-				packet2.Return(ack)
+			ack := ts.codec.EncodeBody(nil, mnetwork.TypeMessageHeartbeat)
+			if err = ts.sendData(ack.Data()); err != nil {
+				ts.logger.Error("Send heartbeat ack failed", zap.Error(err))
 			}
+			packet2.Return(ack)
+
+			ts.logger.Info("Recv heartbeat", zap.String("Addr", ts.addr), zap.Time("Time", time.Now()))
 		default:
 			if err = ts.OnData(data); err != nil {
 				return
@@ -143,4 +162,8 @@ func (ts *TcpServerConn) OnData(data []byte) error {
 		packet2.Return(r)
 	}
 	return nil
+}
+
+func newTcpServerConnPrefixLogger() *mlog.ZapLogger {
+	return mlog.NewLogger("Transport TcpServer conn")
 }

@@ -134,7 +134,6 @@ func (tc *TcpClient) handleDial(_ *DialOption) {
 	tc.connCond.L.Unlock()
 	tc.connCond.Broadcast()
 
-	tc.lastAck.Store(0)
 	tc.sw = sender_wrapper.NewSender(tc.SendData)
 	tc.buf.Run(tc.sw)
 	tc.remoteAddr = tc.conn.RemoteAddr().String()
@@ -144,7 +143,13 @@ func (tc *TcpClient) handleDial(_ *DialOption) {
 
 func (tc *TcpClient) SendData(pack packet2.IPacket) error {
 	defer packet2.Return(pack)
-	err := tc.sendData(pack.Data())
+	body, err := tc.codec.Encode(pack.Data(), mnetwork.TypeMessageRaw)
+	if err != nil {
+		return err
+	}
+
+	defer packet2.Return(body)
+	err = tc.sendData(body.Data())
 	if err != nil {
 		if tc.conn != nil {
 			_ = tc.conn.Close()
@@ -154,16 +159,10 @@ func (tc *TcpClient) SendData(pack packet2.IPacket) error {
 }
 
 func (tc *TcpClient) sendData(data []byte) error {
-	body, err := tc.codec.EncodeBody(data, mnetwork.TypeMessageRaw)
-	if err != nil {
+	if err := tc.conn.SetWriteDeadline(time.Now().Add(tc.writeTimeout)); err != nil {
 		return err
 	}
-	if err = tc.conn.SetWriteDeadline(time.Now().Add(tc.writeTimeout)); err != nil {
-		packet2.Return(body)
-		return err
-	}
-	_, err = tc.conn.Write(body.Data())
-	packet2.Return(body)
+	_, err := tc.conn.Write(data)
 	return err
 }
 
@@ -222,6 +221,7 @@ func (tc *TcpClient) reader() {
 
 		switch head {
 		case mnetwork.TypeMessageHeartbeat:
+			tc.logger.Info("Receive heartbeat ack", zap.String("RemoteAddr", tc.remoteAddr), zap.Time("Time", time.Now()))
 		default:
 			if len(in) > 0 {
 				r := packet2.ReaderP(in)
@@ -245,42 +245,40 @@ func (tc *TcpClient) dispatch(bytes []byte) {
 }
 
 func (tc *TcpClient) keepalive() {
-	ticker := time.NewTicker(time.Second)
 	codec := mnetwork.NewCodec(MaxIncomingPacket, false, 0)
-	ping, _ := codec.EncodeBody(nil, mnetwork.TypeMessageHeartbeat)
+	ping, _ := codec.Encode(nil, mnetwork.TypeMessageHeartbeat)
 	defer packet2.Return(ping)
 
-	prev := time.Now().Unix()
-	timeout := time.Duration(0)
+	prev := time.Now().UnixNano()
+	timeoutLeft := time.Duration(0)
 	outstandingPing := false
+	timer := time.NewTimer(AckInterval)
 
 	for {
 		select {
-		case <-ticker.C:
+		case <-timer.C:
 			la := tc.lastAck.Load()
 			if la > prev {
-				prev = la
-				ticker.Reset(time.Duration(la-time.Now().Unix()) + AckInterval)
 				outstandingPing = false
+				timer.Reset(time.Duration(la) + AckInterval - time.Duration(time.Now().UnixNano()))
+				prev = la
 				continue
 			}
 
-			if outstandingPing && timeout <= 0 {
+			if outstandingPing && timeoutLeft <= 0 {
 				tc.logger.Error("No heartbeat", zap.String("RemoteAddr", tc.remoteAddr))
 				_ = tc.conn.Close()
 				return
 			}
 
 			if !outstandingPing {
-				_ = tc.conn.SetWriteDeadline(time.Now().Add(tc.writeTimeout))
-				_, _ = tc.conn.Write(ping.Data())
-
+				_ = tc.sendData(ping.Data())
+				timeoutLeft = PingTimeOut
 				outstandingPing = true
-				timeout = PingTimeOut
 			}
-			sd := number_utils.Min[time.Duration](AckInterval, timeout)
-			timeout -= sd
-			ticker.Reset(sd)
+			sd := number_utils.Min[time.Duration](AckInterval, timeoutLeft)
+			timeoutLeft -= sd
+			timer.Reset(sd)
 		case <-tc.ctx.Done():
 			return
 		}
@@ -288,7 +286,7 @@ func (tc *TcpClient) keepalive() {
 }
 
 func (tc *TcpClient) ack() {
-	tc.lastAck.Store(time.Now().Unix())
+	tc.lastAck.Store(time.Now().UnixNano())
 }
 
 func withRetry(handle func() error) error {
