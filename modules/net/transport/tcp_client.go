@@ -157,6 +157,7 @@ func (tc *TcpClient) SendData(pack packet2.IPacket) error {
 		if tc.conn != nil {
 			_ = tc.conn.Close()
 		}
+		tc.logger.Error("Send data failed", zap.Error(err))
 	}
 	return err
 }
