@@ -30,6 +30,7 @@ type TcpServerConn struct {
 	buf    *ControlBuffer
 	r      *mnetwork.BlockReceiver
 	logger *mlog.ZapLogger
+	m      *Monitor
 
 	writeTimeout time.Duration
 }
@@ -49,6 +50,7 @@ func NewTcpServerConn(ctx context.Context, _conn net.Conn, maxIncomingPacket uin
 		r:            mnetwork.NewBlockReceiver(),
 		writeTimeout: writeTO,
 		logger:       newTcpServerConnPrefixLogger(),
+		m:            NewMonitor(),
 	}
 
 	sw := sender_wrapper.NewSender(ts.SendData)
@@ -74,6 +76,10 @@ func (ts *TcpServerConn) Recv(ctx context.Context) ([]byte, error) {
 
 func (ts *TcpServerConn) Close() error {
 	return ts.conn.Close()
+}
+
+func (ts *TcpServerConn) GetMonitor() IMonitor {
+	return ts.m
 }
 
 // SendData implicitly call body.Return
@@ -142,8 +148,11 @@ func (ts *TcpServerConn) HandleLoop(header, body []byte) {
 			}
 			packet2.Return(ack)
 
-			ts.logger.Info("Recv heartbeat", zap.String("Addr", ts.addr), zap.Time("Time", time.Now()))
+			ts.logger.Info("Recv heartbeat", zap.String("Addr", ts.addr), zap.Time("Time", time.Now()),
+				zap.Uint64("InboundTraffic", ts.m.InboundTraffic), zap.Uint64("OutboundTraffic", ts.m.OutboundTraffic),
+				zap.Uint64("RealOutboundTraffic", ts.m.RealOutboundTraffic), zap.Uint64("RealInboundTraffic", ts.m.RealInboundTraffic))
 		default:
+			ts.m.IncrementRealInboundTraffic(uint64(len(data) + 4 + 2))
 			if err = ts.OnData(data); err != nil {
 				return
 			}
@@ -156,6 +165,7 @@ func (ts *TcpServerConn) OnData(data []byte) error {
 		r := packet2.ReaderP(data)
 		for len(r.Remain()) > 0 {
 			if bytes, err := r.ReadBytes32(); err == nil {
+				ts.m.IncrementInboundTraffic(uint64(len(bytes)))
 				ts.r.Put(bytes, nil)
 			}
 		}

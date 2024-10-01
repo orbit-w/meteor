@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"io"
 	"log"
 	"runtime"
-	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -84,34 +84,13 @@ func Benchmark_Concurrency128_Send64K_Test(b *testing.B) {
 
 func benchmarkEcho(b *testing.B, size, num int) {
 	var (
-		total    = uint64(size * num * b.N)
-		count    = atomic.Uint64{}
-		buf      = make([]byte, size)
-		complete = make(chan struct{}, 1)
-		ctx      = context.Background()
+		total = uint64(size * num * b.N)
+		buf   = make([]byte, size)
+		ctx   = context.Background()
 	)
 
-	server := serveTestWithHandler(b, func(conn IConn) {
-		for {
-			in, err := conn.Recv(ctx)
-			if err != nil {
-				if IsClosedConnError(err) {
-					break
-				}
-
-				if IsCancelError(err) || errors.Is(err, io.EOF) {
-					break
-				}
-
-				log.Println("conn read mux failed: ", err.Error())
-				break
-			}
-			t := count.Add(uint64(len(in)))
-			if t >= total {
-				close(complete)
-			}
-		}
-	})
+	server, wait, err := ServePlannedTraffic("tcp", "localhost:0", int64(total))
+	assert.NoError(b, err)
 	defer server.Stop()
 
 	host := server.Addr()
@@ -145,19 +124,6 @@ func benchmarkEcho(b *testing.B, size, num int) {
 		}()
 	}
 
-	go func() {
-		tick := time.Tick(time.Second * 2)
-		for {
-			select {
-			case <-complete:
-				return
-			case <-tick:
-				fmt.Println("count: ", count.Load())
-				fmt.Println("total: ", total)
-			}
-		}
-	}()
-
-	<-complete
+	wait()
 	runtime.GC()
 }

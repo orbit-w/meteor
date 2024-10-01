@@ -21,18 +21,17 @@ type IServer interface {
 	Addr() string
 }
 
-func Serve(pStr, host string,
+func Serve(protocol, host string,
 	_handle func(conn IConn)) (IServer, error) {
 	config := DefaultServerConfig()
-	return ServeByConfig(pStr, host, _handle, config)
+	return ServeByConfig(protocol, host, _handle, config)
 }
 
-func ServeByConfig(pStr, host string,
+func ServeByConfig(protocol, host string,
 	_handle func(conn IConn), conf *Config) (IServer, error) {
 	parseConfig(&conf)
 	op := conf.ToAcceptorOptions()
-	protocol := parseProtocol(pStr)
-	factory := GetFactory(protocol)
+	factory := GetFactory(parseProtocol(protocol))
 	server := factory()
 	if err := server.Serve(host, _handle, op); err != nil {
 		return nil, err

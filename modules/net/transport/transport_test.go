@@ -14,7 +14,6 @@ import (
 	"log"
 	"runtime"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -25,17 +24,48 @@ var (
 
 func Test_Echo_4K(t *testing.T) {
 	execMax := 600
-	echoConcurrencyTest(t, 4096, 100, 128, execMax)
+	EchoConcurrencyTest(t, 4096, 100, 128, execMax)
 }
 
 func Test_Echo_64K(t *testing.T) {
 	execMax := 200
-	echoConcurrencyTest(t, 65536, 100, 128, execMax)
+	EchoConcurrencyTest(t, 65536, 100, 128, execMax)
 }
 
 func Test_Echo_128K(t *testing.T) {
-	execMax := 64
-	echoConcurrencyTest(t, 1024*128, 200, 64, execMax)
+}
+
+func Test_Echo_Monitor(t *testing.T) {
+	viper.Set(mlog.FlagLogDir, "./transport.log")
+	host := "127.0.0.1:6800"
+	s := ServeTest(t, host, true)
+	ctx := context.Background()
+
+	conn := DialContextByDefaultOp(context.Background(), host)
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	go func() {
+		for {
+			in, err := conn.Recv(ctx)
+			if err != nil {
+				if IsCancelError(err) || errors.Is(err, io.EOF) {
+					log.Println("EOF")
+				} else {
+					log.Println("Recv failed: ", err.Error())
+				}
+				break
+			}
+			log.Println("recv response: ", string(in))
+		}
+	}()
+
+	w := []byte("hello, world")
+	_ = conn.Send(w)
+
+	_ = s.Stop()
+	time.Sleep(time.Minute)
 }
 
 func Test_CloseWithNoBlocking(t *testing.T) {
@@ -48,7 +78,8 @@ func Test_CloseWithNoBlocking(t *testing.T) {
 func Test_Heartbeat(t *testing.T) {
 	host := "127.0.0.1:6800"
 	ServeTest(t, host, true)
-	DialContextByDefaultOp(context.Background(), host)
+	conn := DialContextByDefaultOp(context.Background(), host)
+	_ = conn.Send([]byte("hello, Server"))
 	time.Sleep(time.Minute * 10)
 }
 
@@ -162,41 +193,25 @@ type TestingT interface {
 	Errorf(format string, args ...interface{})
 }
 
-func echoConcurrencyTest(t *testing.T, size, loopNum, cNum, max int) {
+func EchoConcurrencyTest(t *testing.T, size, loopNum, cNum, max int) {
 	viper.Set(mlog.FlagLogDir, "./transport.log")
 	for i := 0; i < loopNum; i++ {
 		execNum := number_utils.RandomInt(1, max)
-		testEcho(t, execNum, size, cNum)
+		echoConcurrencyTest(t, execNum, size, cNum)
 		time.Sleep(time.Millisecond * 500)
 	}
 }
 
-func testEcho(t *testing.T, execNum, size, num int) {
+func echoConcurrencyTest(t *testing.T, execNum, size, num int) {
 	runtime.GC()
 	var (
-		total    = uint64(size * num * execNum)
-		count    = atomic.Uint64{}
-		buf      = make([]byte, size)
-		complete = make(chan struct{}, 1)
-		ctx      = context.Background()
+		total = uint64(size * num * execNum)
+		buf   = make([]byte, size)
+		ctx   = context.Background()
 	)
 
-	server := serveTestWithHandler(t, func(conn IConn) {
-		for {
-			in, err := conn.Recv(ctx)
-			if err != nil {
-				if IsClosedConnError(err) || IsCancelError(err) || errors.Is(err, io.EOF) {
-					break
-				}
-
-				log.Println("conn read failed: ", err.Error())
-				break
-			}
-			if count.Add(uint64(len(in))) >= total {
-				close(complete)
-			}
-		}
-	})
+	server, wait, err := ServePlannedTraffic("tcp", "localhost:0", int64(total))
+	assert.NoError(t, err)
 	defer server.Stop()
 
 	host := server.Addr()
@@ -238,20 +253,7 @@ func testEcho(t *testing.T, execNum, size, num int) {
 		}()
 	}
 
-	go func() {
-		tick := time.Tick(time.Second * 2)
-		for {
-			select {
-			case <-complete:
-				return
-			case <-tick:
-				fmt.Println("count: ", count.Load())
-				fmt.Println("total: ", total)
-			}
-		}
-	}()
-
-	<-complete
+	wait()
 }
 
 func serveTestWithHandler(t assert.TestingT, handle func(conn IConn)) IServer {

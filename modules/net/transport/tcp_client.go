@@ -38,6 +38,7 @@ type TcpClient struct {
 	r                *mnetwork.BlockReceiver
 	unregisterHandle func()
 	writeTimeout     time.Duration
+	m                *Monitor
 
 	connState int8       //代表链接状态
 	connCond  *sync.Cond //链接状态条件变量
@@ -72,6 +73,7 @@ func DialContextWithOps(ctx context.Context, remoteAddr string, _ops ...*DialOpt
 		connCond:         sync.NewCond(&sync.Mutex{}),
 		connState:        idle,
 		logger:           newTcpClientPrefixLogger(),
+		m:                NewMonitor(),
 	}
 
 	go tc.handleDial(dp)
@@ -82,6 +84,7 @@ func (tc *TcpClient) Send(out []byte) error {
 	if len(out) == 0 {
 		return nil
 	}
+	tc.m.IncrementOutboundTraffic(uint64(len(out)))
 	err := tc.buf.Set(out)
 	return err
 }
@@ -103,6 +106,10 @@ func (tc *TcpClient) Close() error {
 		}
 	}
 	return nil
+}
+
+func (tc *TcpClient) GetMonitor() IMonitor {
+	return tc.m
 }
 
 func (tc *TcpClient) handleDial(_ *DialOption) {
@@ -152,14 +159,17 @@ func (tc *TcpClient) SendData(pack packet2.IPacket) error {
 	}
 
 	defer packet2.Return(body)
-	err = tc.sendData(body.Data())
+	data := body.Data()
+	err = tc.sendData(data)
 	if err != nil {
 		if tc.conn != nil {
 			_ = tc.conn.Close()
 		}
 		tc.logger.Error("Send data failed", zap.Error(err))
+		return err
 	}
-	return err
+	tc.m.IncrementRealOutboundTraffic(uint64(len(data)))
+	return nil
 }
 
 func (tc *TcpClient) sendData(data []byte) error {
@@ -226,7 +236,10 @@ func (tc *TcpClient) reader() {
 		switch head {
 		case mnetwork.TypeMessageHeartbeat:
 			tc.logger.Info("Receive heartbeat ack", zap.String("RemoteAddr", tc.remoteAddr),
-				zap.Time("Time", time.Now()), zap.String("LocalAddr", tc.localAddr))
+				zap.Time("Time", time.Now()), zap.String("LocalAddr", tc.localAddr),
+				zap.Uint64("InboundTraffic", tc.m.InboundTraffic), zap.Uint64("OutboundTraffic", tc.m.OutboundTraffic),
+				zap.Uint64("RealOutboundTraffic", tc.m.RealOutboundTraffic), zap.Uint64("RealInboundTraffic", tc.m.RealInboundTraffic))
+
 		default:
 			if len(in) > 0 {
 				r := packet2.ReaderP(in)
