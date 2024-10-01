@@ -108,10 +108,6 @@ func (tc *TcpClient) Close() error {
 	return nil
 }
 
-func (tc *TcpClient) GetMonitor() IMonitor {
-	return tc.m
-}
-
 func (tc *TcpClient) handleDial(_ *DialOption) {
 	defer func() {
 		if tc.unregisterHandle != nil {
@@ -237,7 +233,7 @@ func (tc *TcpClient) reader() {
 		case mnetwork.TypeMessageHeartbeat:
 			tc.logger.Info("Receive heartbeat ack", zap.String("RemoteAddr", tc.remoteAddr),
 				zap.Time("Time", time.Now()), zap.String("LocalAddr", tc.localAddr),
-				zap.Uint64("InboundTraffic", tc.m.InboundTraffic), zap.Uint64("OutboundTraffic", tc.m.OutboundTraffic),
+				zap.Uint64("InboundTraffic", tc.m.InboundTraffic), zap.Uint64("OutboundTraffic", tc.m.GetOutboundTraffic()),
 				zap.Uint64("RealOutboundTraffic", tc.m.RealOutboundTraffic), zap.Uint64("RealInboundTraffic", tc.m.RealInboundTraffic))
 
 		default:

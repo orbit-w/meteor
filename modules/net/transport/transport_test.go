@@ -39,6 +39,7 @@ func Test_Echo_Monitor(t *testing.T) {
 	viper.Set(mlog.FlagLogDir, "./transport.log")
 	host := "127.0.0.1:6800"
 	s := ServeTest(t, host, true)
+	defer s.Stop()
 	ctx := context.Background()
 
 	conn := DialContextByDefaultOp(context.Background(), host)
@@ -64,7 +65,7 @@ func Test_Echo_Monitor(t *testing.T) {
 	w := []byte("hello, world")
 	_ = conn.Send(w)
 
-	_ = s.Stop()
+	//_ = s.Stop()
 	time.Sleep(time.Minute)
 }
 
@@ -254,13 +255,6 @@ func echoConcurrencyTest(t *testing.T, execNum, size, num int) {
 	}
 
 	wait()
-}
-
-func serveTestWithHandler(t assert.TestingT, handle func(conn IConn)) IServer {
-	host := "localhost:0"
-	server, err := Serve("tcp", host, handle)
-	assert.NoError(t, err)
-	return server
 }
 
 func ServeTest(t TestingT, host string, print bool) IServer {

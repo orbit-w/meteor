@@ -78,10 +78,6 @@ func (ts *TcpServerConn) Close() error {
 	return ts.conn.Close()
 }
 
-func (ts *TcpServerConn) GetMonitor() IMonitor {
-	return ts.m
-}
-
 // SendData implicitly call body.Return
 // coding: size<int32> | gzipped<bool> | body<bytes>
 func (ts *TcpServerConn) SendData(out packet2.IPacket) error {
@@ -149,7 +145,7 @@ func (ts *TcpServerConn) HandleLoop(header, body []byte) {
 			packet2.Return(ack)
 
 			ts.logger.Info("Recv heartbeat", zap.String("Addr", ts.addr), zap.Time("Time", time.Now()),
-				zap.Uint64("InboundTraffic", ts.m.InboundTraffic), zap.Uint64("OutboundTraffic", ts.m.OutboundTraffic),
+				zap.Uint64("InboundTraffic", ts.m.InboundTraffic), zap.Uint64("OutboundTraffic", ts.m.GetOutboundTraffic()),
 				zap.Uint64("RealOutboundTraffic", ts.m.RealOutboundTraffic), zap.Uint64("RealInboundTraffic", ts.m.RealInboundTraffic))
 		default:
 			ts.m.IncrementRealInboundTraffic(uint64(len(data) + 4 + 2))
