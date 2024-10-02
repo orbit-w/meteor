@@ -231,11 +231,7 @@ func (tc *TcpClient) reader() {
 
 		switch head {
 		case mnetwork.TypeMessageHeartbeat:
-			tc.logger.Info("Receive heartbeat ack", zap.String("RemoteAddr", tc.remoteAddr),
-				zap.Time("Time", time.Now()), zap.String("LocalAddr", tc.localAddr),
-				zap.Uint64("InboundTraffic", tc.m.InboundTraffic), zap.Uint64("OutboundTraffic", tc.m.GetOutboundTraffic()),
-				zap.Uint64("RealOutboundTraffic", tc.m.RealOutboundTraffic), zap.Uint64("RealInboundTraffic", tc.m.RealInboundTraffic))
-
+			tc.heartbeat()
 		default:
 			if len(in) > 0 {
 				r := packet2.ReaderP(in)
@@ -301,6 +297,17 @@ func (tc *TcpClient) keepalive() {
 
 func (tc *TcpClient) ack() {
 	tc.lastAck.Store(time.Now().UnixNano())
+}
+
+func (tc *TcpClient) heartbeat() {
+	fields := []zap.Field{
+		zap.String("RemoteAddr", tc.remoteAddr),
+		zap.String("LocalAddr", tc.localAddr),
+		zap.Time("Time", time.Now()),
+	}
+
+	fields = append(fields, tc.m.Log()...)
+	tc.logger.Info("Receive heartbeat ack", fields...)
 }
 
 func withRetry(handle func() error) error {

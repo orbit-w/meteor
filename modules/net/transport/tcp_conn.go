@@ -138,15 +138,8 @@ func (ts *TcpServerConn) HandleLoop(header, body []byte) {
 
 		switch head {
 		case mnetwork.TypeMessageHeartbeat:
-			ack := ts.codec.EncodeBody(nil, mnetwork.TypeMessageHeartbeat)
-			if err = ts.sendData(ack.Data()); err != nil {
-				ts.logger.Error("Send heartbeat ack failed", zap.Error(err))
-			}
-			packet2.Return(ack)
-
-			ts.logger.Info("Recv heartbeat", zap.String("Addr", ts.addr), zap.Time("Time", time.Now()),
-				zap.Uint64("InboundTraffic", ts.m.InboundTraffic), zap.Uint64("OutboundTraffic", ts.m.GetOutboundTraffic()),
-				zap.Uint64("RealOutboundTraffic", ts.m.RealOutboundTraffic), zap.Uint64("RealInboundTraffic", ts.m.RealInboundTraffic))
+			ts.sendHeartbeatAck()
+			ts.heartbeat()
 		default:
 			ts.m.IncrementRealInboundTraffic(uint64(len(data) + 4 + 2))
 			if err = ts.OnData(data); err != nil {
@@ -168,6 +161,23 @@ func (ts *TcpServerConn) OnData(data []byte) error {
 		packet2.Return(r)
 	}
 	return nil
+}
+
+func (ts *TcpServerConn) sendHeartbeatAck() {
+	ack := ts.codec.EncodeBody(nil, mnetwork.TypeMessageHeartbeat)
+	if err := ts.sendData(ack.Data()); err != nil {
+		ts.logger.Error("Send heartbeat ack failed", zap.Error(err))
+	}
+	packet2.Return(ack)
+}
+
+func (ts *TcpServerConn) heartbeat() {
+	fields := []zap.Field{
+		zap.String("Addr", ts.addr),
+		zap.Time("Time", time.Now()),
+	}
+	fields = append(fields, ts.m.Log()...)
+	ts.logger.Info("Recv heartbeat", fields...)
 }
 
 func newTcpServerConnPrefixLogger() *mlog.ZapLogger {
