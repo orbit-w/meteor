@@ -155,13 +155,9 @@ func (ts *TcpServerConn) OnData(data []byte) error {
 		for len(r.Remain()) > 0 {
 			if bytes, err := r.ReadBytes32(); err == nil {
 				ts.m.IncrementInboundTraffic(uint64(len(bytes)))
-				//deepcopy
-				dst := make([]byte, len(bytes))
-				copy(dst, bytes)
-				ts.r.Put(dst, nil)
+				ts.r.Put(bytes, nil)
 			}
 		}
-		packet2.Return(r)
 	}
 	return nil
 }

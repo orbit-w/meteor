@@ -242,7 +242,6 @@ func (tc *TcpClient) reader() {
 					}
 					tc.dispatch(bytes)
 				}
-				packet2.Return(r)
 			}
 		}
 	}
