@@ -48,8 +48,8 @@ type Config struct {
 	Stage             Stage
 }
 
-func (c *Config) ToAcceptorOptions() net.AcceptorOptions {
-	return net.AcceptorOptions{
+func (c *Config) ToAcceptorOptions() *net.AcceptorOptions {
+	return &net.AcceptorOptions{
 		MaxIncomingPacket: c.MaxIncomingPacket,
 		IsGzip:            c.IsGzip,
 		ReadTimeout:       c.ReadTimeout,

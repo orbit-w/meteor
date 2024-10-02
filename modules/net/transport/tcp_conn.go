@@ -36,7 +36,7 @@ type TcpServerConn struct {
 }
 
 func NewTcpServerConn(ctx context.Context, _conn net.Conn, maxIncomingPacket uint32, head, body []byte,
-	readTO, writeTO time.Duration, isGzip bool) IConn {
+	readTO, writeTO time.Duration, isGzip, needToMonitor bool) IConn {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -50,12 +50,14 @@ func NewTcpServerConn(ctx context.Context, _conn net.Conn, maxIncomingPacket uin
 		r:            mnetwork.NewBlockReceiver(),
 		writeTimeout: writeTO,
 		logger:       newTcpServerConnPrefixLogger(),
-		m:            NewMonitor(),
 	}
 
 	sw := sender_wrapper.NewSender(ts.SendData)
 	ts.sw = sw
 	ts.buf = NewControlBuffer(maxIncomingPacket, ts.sw)
+	if needToMonitor {
+		ts.m = NewMonitor()
+	}
 
 	go ts.HandleLoop(head, body)
 	return ts

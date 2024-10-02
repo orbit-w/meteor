@@ -3,7 +3,6 @@ package network
 import (
 	"context"
 	"net"
-	"time"
 )
 
 /*
@@ -20,5 +19,5 @@ const (
 	UDP Protocol = "udp"
 )
 
-type ConnHandle func(ctx context.Context, generic net.Conn, maxIncomingPacket uint32, head, body []byte,
-	readTimeout, writeTimeout time.Duration)
+type ConnHandle func(ctx context.Context, generic net.Conn, head, body []byte,
+	op *AcceptorOptions)

@@ -21,7 +21,7 @@ type IConn interface {
 }
 
 type ITransportServer interface {
-	Serve(host string, _handle func(conn IConn), op network.AcceptorOptions) error
+	Serve(host string, _handle func(conn IConn), op *network.AcceptorOptions) error
 	Addr() string
 	Stop() error
 }
@@ -30,6 +30,7 @@ type DialOption struct {
 	MaxIncomingPacket uint32
 	IsBlock           bool
 	IsGzip            bool
+	NeedToMonitor     bool
 	ReadTimeout       time.Duration
 	WriteTimeout      time.Duration
 	DisconnectHandler func()
@@ -48,6 +49,15 @@ func DefaultGzipDialOption() *DialOption {
 		MaxIncomingPacket: MaxIncomingPacket,
 		IsBlock:           false,
 		IsGzip:            true,
+	}
+}
+
+func DefaultDevelopDialOption(isGzip bool) *DialOption {
+	return &DialOption{
+		MaxIncomingPacket: MaxIncomingPacket,
+		IsBlock:           false,
+		IsGzip:            isGzip,
+		NeedToMonitor:     true,
 	}
 }
 

@@ -16,19 +16,18 @@ import (
 */
 
 type Server struct {
-	isGzip            bool
-	ccu               int32
-	maxIncomingPacket uint32
-	state             atomic.Uint32
-	host              string
-	protocol          Protocol
-	listener          net.Listener
-	rw                sync.RWMutex
-	ctx               context.Context
-	cancel            context.CancelFunc
-	handle            ConnHandle
-	bodyPool          *sync.Pool
-	headPool          *sync.Pool
+	ccu      int32
+	state    atomic.Uint32
+	host     string
+	protocol Protocol
+	listener net.Listener
+	rw       sync.RWMutex
+	ctx      context.Context
+	cancel   context.CancelFunc
+	handle   ConnHandle
+	bodyPool *sync.Pool
+	headPool *sync.Pool
+	op       *AcceptorOptions
 
 	readTimeout  time.Duration
 	writeTimeout time.Duration
@@ -37,11 +36,12 @@ type Server struct {
 type AcceptorOptions struct {
 	MaxIncomingPacket uint32
 	IsGzip            bool
+	NeedToMonitor     bool
 	ReadTimeout       time.Duration
 	WriteTimeout      time.Duration
 }
 
-func (ins *Server) Serve(p Protocol, listener net.Listener, _handle ConnHandle, ops ...AcceptorOptions) {
+func (ins *Server) Serve(p Protocol, listener net.Listener, _handle ConnHandle, ops ...*AcceptorOptions) {
 	op := parseAndWrapOP(ops...)
 	ctx, cancel := context.WithCancel(context.Background())
 	ins.rw = sync.RWMutex{}
@@ -49,17 +49,16 @@ func (ins *Server) Serve(p Protocol, listener net.Listener, _handle ConnHandle, 
 	ins.writeTimeout = op.WriteTimeout
 	ins.state.Store(TypeWorking)
 	ins.host = ""
-	ins.maxIncomingPacket = op.MaxIncomingPacket
-	ins.isGzip = op.IsGzip
 	ins.ctx = ctx
 	ins.cancel = cancel
 	ins.handle = _handle
 	ins.listener = listener
+	ins.op = op
 
 	ins.protocol = p
 
 	ins.headPool = NewBufferPool(HeadLen)
-	ins.bodyPool = NewBufferPool(ins.maxIncomingPacket)
+	ins.bodyPool = NewBufferPool(op.MaxIncomingPacket)
 
 	go ins.acceptLoop()
 }
@@ -108,12 +107,12 @@ func (ins *Server) handleConn(conn net.Conn) {
 			ins.bodyPool.Put(body)
 		}()
 
-		ins.handle(ins.ctx, conn, ins.maxIncomingPacket, head.Bytes, body.Bytes, ins.readTimeout, ins.writeTimeout)
+		ins.handle(ins.ctx, conn, head.Bytes, body.Bytes, ins.op)
 	})
 }
 
-func DefaultAcceptorOptions() AcceptorOptions {
-	return AcceptorOptions{
+func DefaultAcceptorOptions() *AcceptorOptions {
+	return &AcceptorOptions{
 		MaxIncomingPacket: MaxIncomingPacket,
 		IsGzip:            false,
 		ReadTimeout:       ReadTimeout,
@@ -121,9 +120,9 @@ func DefaultAcceptorOptions() AcceptorOptions {
 	}
 }
 
-func parseAndWrapOP(ops ...AcceptorOptions) AcceptorOptions {
-	var op AcceptorOptions
-	if len(ops) > 0 {
+func parseAndWrapOP(ops ...*AcceptorOptions) *AcceptorOptions {
+	var op *AcceptorOptions
+	if len(ops) > 0 && ops[0] != nil {
 		op = ops[0]
 		if op.MaxIncomingPacket <= 0 {
 			op.MaxIncomingPacket = MaxIncomingPacket

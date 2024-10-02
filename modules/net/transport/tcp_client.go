@@ -73,7 +73,10 @@ func DialContextWithOps(ctx context.Context, remoteAddr string, _ops ...*DialOpt
 		connCond:         sync.NewCond(&sync.Mutex{}),
 		connState:        idle,
 		logger:           newTcpClientPrefixLogger(),
-		m:                NewMonitor(),
+	}
+
+	if dp.NeedToMonitor {
+		tc.m = NewMonitor()
 	}
 
 	go tc.handleDial(dp)
