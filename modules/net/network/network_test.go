@@ -17,7 +17,7 @@ import (
 func TestServer_handleConn(t *testing.T) {
 	t.Log("handleConn")
 	s := new(Server)
-	s.handle = func(ctx context.Context, generic net.Conn, maxIncomingPacket uint32, head, body []byte, readTimeout, writeTimeout time.Duration) {
+	s.handle = func(ctx context.Context, generic net.Conn, head, body []byte, op *AcceptorOptions) {
 		panic("implement me")
 	}
 
