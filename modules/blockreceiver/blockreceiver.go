@@ -3,12 +3,12 @@ package blockreceiver
 import "context"
 
 type BlockReceiver[V any] struct {
-	buf *ReceiveBuf
+	buf *ReceiveBuf[V]
 }
 
 func NewBlockReceiver[V any]() *BlockReceiver[V] {
 	return &BlockReceiver[V]{
-		buf: NewReceiveBuf(),
+		buf: NewReceiveBuf[V](),
 	}
 }
 
@@ -31,14 +31,14 @@ func (r *BlockReceiver[V]) Recv(ctx context.Context) (msg V, err error) {
 }
 
 func (r *BlockReceiver[V]) Put(msg V, err error) {
-	_ = r.buf.put(recvMsg{
+	_ = r.buf.put(recvMsg[V]{
 		msg: msg,
 		err: err,
 	})
 }
 
 func (r *BlockReceiver[V]) OnClose(err error) {
-	_ = r.buf.put(recvMsg{
+	_ = r.buf.put(recvMsg[V]{
 		err: err,
 	})
 }

@@ -2,28 +2,28 @@ package blockreceiver
 
 import "sync"
 
-type recvMsg struct {
-	msg any
+type recvMsg[V any] struct {
+	msg V
 	err error
 }
 
 // ReceiveBuf is an unbounded channel of iRecvMsg structs.
-type ReceiveBuf struct {
-	c   chan recvMsg
+type ReceiveBuf[V any] struct {
+	c   chan recvMsg[V]
 	mu  sync.Mutex
-	buf []recvMsg
+	buf []recvMsg[V]
 	err error
 }
 
-func NewReceiveBuf() *ReceiveBuf {
-	return &ReceiveBuf{
+func NewReceiveBuf[V any]() *ReceiveBuf[V] {
+	return &ReceiveBuf[V]{
 		mu:  sync.Mutex{},
-		c:   make(chan recvMsg, 1),
-		buf: make([]recvMsg, 0),
+		c:   make(chan recvMsg[V], 1),
+		buf: make([]recvMsg[V], 0),
 	}
 }
 
-func (rb *ReceiveBuf) put(r recvMsg) error {
+func (rb *ReceiveBuf[V]) put(r recvMsg[V]) error {
 	rb.mu.Lock()
 	if rb.err != nil {
 		rb.mu.Unlock()
@@ -46,12 +46,12 @@ func (rb *ReceiveBuf) put(r recvMsg) error {
 	return nil
 }
 
-func (rb *ReceiveBuf) load() {
+func (rb *ReceiveBuf[V]) load() {
 	rb.mu.Lock()
 	if len(rb.buf) > 0 {
 		select {
 		case rb.c <- rb.buf[0]:
-			rb.buf[0] = recvMsg{}
+			rb.buf[0] = recvMsg[V]{}
 			rb.buf = rb.buf[1:]
 		default:
 		}
@@ -59,10 +59,10 @@ func (rb *ReceiveBuf) load() {
 	rb.mu.Unlock()
 }
 
-func (rb *ReceiveBuf) get() <-chan recvMsg {
+func (rb *ReceiveBuf[V]) get() <-chan recvMsg[V] {
 	return rb.c
 }
 
-func (rb *ReceiveBuf) getErr() error {
+func (rb *ReceiveBuf[V]) getErr() error {
 	return rb.err
 }
