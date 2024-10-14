@@ -2,20 +2,25 @@ package subpub_redis
 
 import (
 	"context"
+	"fmt"
 	"github.com/gogo/protobuf/proto"
 	"github.com/redis/go-redis/v9"
 	"log"
+	"sync/atomic"
 )
 
 type IPubSub interface {
 	Publish(pid int32, v any) error
 	Subscribe()
+	Stop()
 }
 
 type PubSub struct {
+	state       atomic.Uint32
 	encoderEnum int    //JSON｜Proto3: 默认编码协议是JSON
 	topic       string //主题名称
 	cli         redis.UniversalClient
+	sub         *redis.PubSub
 	invoker     func(pid int32, body []byte)
 }
 
@@ -49,24 +54,33 @@ func (ps *PubSub) Publish(pid int32, v any) error {
 }
 
 func (ps *PubSub) Subscribe() {
-	go func() {
-		for {
-			ps.subscribe(ps.decodeAndInvoke)
+	ps.subscribe(ps.decodeAndInvoke)
+}
+
+func (ps *PubSub) Stop() {
+	if ps.state.CompareAndSwap(stateReady, stateStopped) {
+		if ps.sub != nil {
+			_ = ps.sub.Close()
 		}
-	}()
+	}
 }
 
 func (ps *PubSub) subscribe(handle func(msg *redis.Message)) {
 	pubSub := ps.cli.Subscribe(ctx, ps.topic)
-	defer func() {
-		_ = pubSub.Close()
-	}()
-
+	ps.sub = pubSub
 	ch := pubSub.Channel()
-	for msg := range ch {
-		handle(msg)
-	}
 
+	go func() {
+		defer func() {
+			fmt.Println("close sub, topic: ", ps.topic)
+			if ps.sub != nil {
+				_ = ps.sub.Close()
+			}
+		}()
+		for msg := range ch {
+			handle(msg)
+		}
+	}()
 }
 
 func (ps *PubSub) decodeAndInvoke(msg *redis.Message) {
