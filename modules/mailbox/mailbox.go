@@ -124,7 +124,7 @@ func (m *MailBox) process() {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println(r)
-			log.Println("Stack: ", debug.Stack())
+			log.Println("Stack: ", string(debug.Stack()))
 		}
 	}()
 	var i int

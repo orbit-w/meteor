@@ -2,10 +2,12 @@ package subpub_redis
 
 import (
 	"context"
-	"fmt"
 	"github.com/gogo/protobuf/proto"
+	"github.com/orbit-w/meteor/modules/mlog"
 	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 	"log"
+	"runtime/debug"
 	"sync/atomic"
 )
 
@@ -21,6 +23,7 @@ type PubSub struct {
 	topic       string //主题名称
 	cli         redis.UniversalClient
 	sub         *redis.PubSub
+	log         *mlog.ZapLogger
 	invoker     func(pid int32, body []byte)
 }
 
@@ -38,6 +41,7 @@ func NewPubSub(_cli redis.UniversalClient, ee int, topic string, _invoker func(p
 		invoker:     _invoker,
 		cli:         _cli,
 		encoderEnum: ee,
+		log:         mlog.NewLogger("subpub_redis"),
 	}
 }
 
@@ -47,10 +51,7 @@ func (ps *PubSub) Publish(pid int32, v any) error {
 		return err
 	}
 	err = ps.cli.Publish(ctx, ps.topic, body).Err()
-	if err != nil {
-		log.Println("[Publish] failed: ", err.Error())
-	}
-	return err
+	return ErrPublish(err)
 }
 
 func (ps *PubSub) Subscribe() {
@@ -72,7 +73,6 @@ func (ps *PubSub) subscribe(handle func(msg *redis.Message)) {
 
 	go func() {
 		defer func() {
-			fmt.Println("close sub, topic: ", ps.topic)
 			if ps.sub != nil {
 				_ = ps.sub.Close()
 			}
@@ -86,7 +86,7 @@ func (ps *PubSub) subscribe(handle func(msg *redis.Message)) {
 func (ps *PubSub) decodeAndInvoke(msg *redis.Message) {
 	pb := new(PubMessage)
 	if err := proto.Unmarshal([]byte(msg.Payload), pb); err != nil {
-		log.Println("Decode proto failed: ", err.Error())
+		ps.log.Error("[PubSub] decode proto failed: ", zap.Error(err))
 		return
 	}
 
@@ -97,7 +97,9 @@ func (ps *PubSub) decodeAndInvoke(msg *redis.Message) {
 func (ps *PubSub) handleMessage(msg *PubMessage) {
 	defer func() {
 		if r := recover(); r != nil {
-
+			//ps.log.Error("panic", zap.Any("recover", r), zap.String("stack", string(debug.Stack())))
+			log.Println(r)
+			log.Println("Stack: ", string(debug.Stack()))
 		}
 	}()
 	ps.invoker(msg.Pid, msg.Data)

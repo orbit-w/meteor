@@ -2,6 +2,7 @@ package subpub_redis
 
 import (
 	"github.com/orbit-w/meteor/modules/database/rdb"
+	"github.com/orbit-w/meteor/modules/mlog"
 	"log"
 	"testing"
 	"time"
@@ -130,4 +131,18 @@ func TestPubSub_Create(t *testing.T) {
 	}
 
 	time.Sleep(time.Second * 30)
+}
+
+func TestPubSub_Recovery(t *testing.T) {
+	ps := new(PubSub)
+	var s []byte
+	ps.log = mlog.NewLogger("subpub_redis")
+	ps.invoker = func(pid int32, body []byte) {
+		s[2] = 1
+	}
+	ps.handleMessage(&PubMessage{
+		Pid:  10001,
+		Data: []byte("hello"),
+	})
+	time.Sleep(time.Second * 5)
 }
