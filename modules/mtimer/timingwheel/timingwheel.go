@@ -138,7 +138,7 @@ func (tw *TimingWheel) run() {
 		case elem := <-tw.queue.C:
 			b := elem.(*TimerTaskLinkedList)
 			tw.advanceClock(b.Expiration())
-			b.FlushAll(tw.add)
+			b.flushAll(tw.add)
 		case <-tw.close:
 			return
 		}

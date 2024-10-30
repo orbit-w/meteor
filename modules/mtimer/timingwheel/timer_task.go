@@ -54,10 +54,6 @@ func newTimerTask(_id uint64, _delay time.Duration, cb Callback) *TimerTask {
 	}
 }
 
-func (t *TimerTask) isCanceled() bool {
-	return t.entry.Load() == nil
-}
-
 func (t *TimerTask) setTimerTaskEntry(ent *TimerTaskEntry) {
 	t.mux.Lock()
 	defer t.mux.Unlock()
