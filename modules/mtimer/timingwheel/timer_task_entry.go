@@ -1,10 +1,12 @@
 package timewheel
 
 import (
+	"sync"
 	"sync/atomic"
 )
 
 type TimerTaskEntry struct {
+	mu           sync.Mutex
 	expirationMs int64
 	next, prev   *TimerTaskEntry
 	list         atomic.Pointer[TimerTaskLinkedList]
