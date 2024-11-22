@@ -3,6 +3,7 @@ package timewheel
 import (
 	"github.com/orbit-w/meteor/modules/mlog"
 	"github.com/orbit-w/meteor/modules/mtimer/timingwheel/delayqueue"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -10,12 +11,12 @@ import (
 // TimingWheel struct that manages the scheduling of timer tasks using a hierarchical time wheel.
 // TimingWheel 结构体，使用分层时间轮管理定时任务调度。
 type TimingWheel struct {
-	currentTime   atomic.Int64                // Current timestamp in milliseconds, used to determine which time wheel the task should be inserted into.
+	mu            sync.Mutex
 	tickMs        int64                       // Duration of each tick, with a maximum precision of milliseconds.
 	wheelSize     int64                       // Number of buckets in each layer of the time wheel.
 	interval      int64                       // Total duration of this layer of the time wheel, equal to tick duration multiplied by wheelSize.
 	startMs       int64                       // Start time in milliseconds.
-	taskCounter   int32                       // Total number of timer tasks in this layer of the time wheel.
+	currentTime   int64                       // Current timestamp in milliseconds, used to determine which time wheel the task should be inserted into.
 	buckets       []*TimerTaskLinkedList      // Buckets in the time wheel.
 	queue         *delayqueue.DelayQueue      // Delay queue for managing timer tasks.
 	overflowWheel atomic.Pointer[TimingWheel] // Pointer to the overflow time wheel.
@@ -49,17 +50,16 @@ func NewTimingWheel(tick time.Duration, wheelSize int64, handle func(t *TimerTas
 func newTimingWheel(_queue *delayqueue.DelayQueue, _tickMs, _wheelSize, _startMs int64,
 	_handler func(t *TimerTask) error) *TimingWheel {
 	tw := &TimingWheel{
-		tickMs:    _tickMs,
-		startMs:   _startMs,
-		wheelSize: _wheelSize,
-		interval:  _tickMs * _wheelSize,
-		buckets:   make([]*TimerTaskLinkedList, _wheelSize),
-		queue:     _queue,
-		handler:   _handler,
-		close:     make(chan struct{}, 1),
+		tickMs:      _tickMs,
+		startMs:     _startMs,
+		wheelSize:   _wheelSize,
+		interval:    _tickMs * _wheelSize,
+		currentTime: _startMs - (_startMs % _tickMs),
+		buckets:     make([]*TimerTaskLinkedList, _wheelSize),
+		queue:       _queue,
+		handler:     _handler,
+		close:       make(chan struct{}, 1),
 	}
-
-	tw.currentTime.Store(_startMs - (_startMs % _tickMs))
 
 	for i := int64(0); i < _wheelSize; i++ {
 		tw.buckets[i] = NewTimerTaskLinkedList()
@@ -93,21 +93,20 @@ func (tw *TimingWheel) stop() {
 // Returns:
 // - bool: True if the task was added successfully, false otherwise
 func (tw *TimingWheel) addTimer(ent *TimerTaskEntry) bool {
-	currentTime := tw.currentTime.Load()
-	t := ent.timerTask
+	expiration := ent.timerTask.expiration
 	switch {
 	case ent.cancelled():
 		return false
-	case t.expiration < currentTime+tw.tickMs:
+	case expiration < tw.currentTime+tw.tickMs:
 		// Already expired
 		return false
-	case t.expiration < currentTime+tw.interval:
+	case expiration < tw.currentTime+tw.interval:
 		// Put it into its own bucket
-		virtualId, index := tw.calcVirtualId(t)
+		virtualId, index := tw.calcVirtualId(expiration)
 		b := tw.buckets[index]
 		b.Add(ent)
 		// Set the bucket expiration time
-		if b.setExpiration(virtualId * tw.tickMs) {
+		if b.SetExpiration(virtualId * tw.tickMs) {
 			// The bucket needs to be enqueued for the first time
 			tw.queue.Offer(b, b.Expiration())
 		}
@@ -116,17 +115,23 @@ func (tw *TimingWheel) addTimer(ent *TimerTaskEntry) bool {
 		// Out of range. Put it into the overflow wheel
 		ow := tw.overflowWheel.Load()
 		if ow == nil {
-			ntw := newTimingWheel(tw.queue,
-				tw.tickMs*tw.wheelSize,
-				tw.wheelSize,
-				currentTime,
-				tw.handler)
-			tw.overflowWheel.CompareAndSwap(nil, ntw)
-
-			ow = tw.overflowWheel.Load()
+			tw.addOverflowWheel()
 		}
 
-		return ow.addTimer(ent)
+		return tw.overflowWheel.Load().addTimer(ent)
+	}
+}
+
+func (tw *TimingWheel) addOverflowWheel() {
+	tw.mu.Lock()
+	defer tw.mu.Unlock()
+	if tw.overflowWheel.Load() == nil {
+		ntw := newTimingWheel(tw.queue,
+			tw.tickMs*tw.wheelSize,
+			tw.wheelSize,
+			tw.currentTime,
+			tw.handler)
+		tw.overflowWheel.Store(ntw)
 	}
 }
 
@@ -158,14 +163,11 @@ func (tw *TimingWheel) poll() {
 // Parameters:
 // - timeMs: The new time in milliseconds
 func (tw *TimingWheel) advanceClock(timeMs int64) {
-	cur := tw.currentTime.Load()
-	if timeMs >= cur+tw.tickMs {
-		cur = timeMs - timeMs%tw.tickMs
-		tw.currentTime.Store(cur)
+	if timeMs >= tw.currentTime+tw.tickMs {
+		tw.currentTime = timeMs - timeMs%tw.tickMs
 
-		ow := tw.overflowWheel.Load()
-		if ow != nil {
-			ow.advanceClock(cur)
+		if ow := tw.overflowWheel.Load(); ow != nil {
+			ow.advanceClock(tw.currentTime)
 		}
 	}
 }
@@ -177,8 +179,8 @@ func (tw *TimingWheel) advanceClock(timeMs int64) {
 // Returns:
 // - virtualId: The virtual ID of the timer task
 // - index: The index of the bucket in the timing wheel
-func (tw *TimingWheel) calcVirtualId(t *TimerTask) (virtualId, index int64) {
-	virtualId = t.expiration / tw.tickMs
+func (tw *TimingWheel) calcVirtualId(expiration int64) (virtualId, index int64) {
+	virtualId = expiration / tw.tickMs
 	index = virtualId % tw.wheelSize
 	return
 }

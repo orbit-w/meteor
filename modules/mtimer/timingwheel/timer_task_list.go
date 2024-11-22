@@ -24,7 +24,7 @@ func (ins *TimerTaskLinkedList) Expiration() int64 {
 	return ins.expiration.Load()
 }
 
-func (ins *TimerTaskLinkedList) setExpiration(expiration int64) bool {
+func (ins *TimerTaskLinkedList) SetExpiration(expiration int64) bool {
 	return ins.expiration.Swap(expiration) != expiration
 }
 
@@ -93,7 +93,7 @@ func (ins *TimerTaskLinkedList) flushAll(cmd func(ent *TimerTaskEntry)) {
 	ins.root.next = ins.root
 	ins.root.prev = ins.root
 	// Reset expiration
-	ins.setExpiration(-1)
+	ins.SetExpiration(-1)
 	ins.mu.Unlock()
 
 	for i := range ins.entriesToFlush {
