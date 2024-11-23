@@ -151,7 +151,7 @@ func Test_Channel(t *testing.T) {
 }
 
 func Test_AddOrder(t *testing.T) {
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 100; i++ {
 		t.Run(fmt.Sprintf("Run %d", i), func(t *testing.T) {
 			s := NewScheduler()
 			s.Start()
@@ -159,24 +159,35 @@ func Test_AddOrder(t *testing.T) {
 				_ = s.GracefulStop(context.Background())
 			}()
 			wg := sync.WaitGroup{}
-			wg.Add(1)
+			wg.Add(2)
+
+			order := make(chan int, 2)
 
 			var (
 				task1 = func(a ...any) {
-					fmt.Println("1")
+					order <- 1
 					wg.Done()
 				}
 
 				task2 = func(a ...any) {
-					fmt.Println("2")
+					order <- 2
 					wg.Done()
 				}
 			)
 
 			s.Add(time.Second, task1)
-			wg.Add(1)
 			s.Add(time.Second, task2)
 			wg.Wait()
+			close(order)
+
+			var result []int
+			for o := range order {
+				result = append(result, o)
+			}
+
+			if len(result) != 2 || result[0] != 1 || result[1] != 2 {
+				t.Errorf("tasks executed in wrong order: %v", result)
+			}
 		})
 	}
 }
