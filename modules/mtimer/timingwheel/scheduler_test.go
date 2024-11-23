@@ -3,6 +3,7 @@ package timewheel
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 )
@@ -72,20 +73,27 @@ func TestScheduler_Add(t *testing.T) {
 		_ = s.GracefulStop(context.Background())
 	}()
 
-	for index := 1; index < 120; index++ {
-		queue := make(chan bool, 1)
-		start := time.Now()
-		_ = s.Add(time.Duration(index)*time.Second, func(args ...any) {
-			queue <- true
-		})
+	wg := sync.WaitGroup{}
+	for index := 1; index < 500; index++ {
+		wg.Add(1)
+		shift := index
+		go func() {
+			queue := make(chan bool, 1)
+			start := time.Now()
+			_ = s.Add(time.Duration(shift)*time.Second, func(args ...any) {
+				queue <- true
+			})
 
-		<-queue
+			<-queue
 
-		before := index*1000 - 200
-		after := index*1000 + 200
-		checkTimeCost(t, start, time.Now(), before, after)
-		fmt.Println("time since: ", time.Since(start).String())
+			before := shift*1000 - 200
+			after := shift*1000 + 200
+			checkTimeCost(t, start, time.Now(), before, after)
+			fmt.Println("time since: ", time.Since(start).String())
+			wg.Done()
+		}()
 	}
+	wg.Wait()
 }
 
 func TestScheduler_TimerCancel(t *testing.T) {
@@ -140,4 +148,35 @@ func Test_Channel(t *testing.T) {
 	// 尝试从已关闭且无数据的通道读取
 	val, ok := <-ch
 	fmt.Printf("val: %d, ok: %v\n", val, ok) // 输出: val: 0, ok: false
+}
+
+func Test_AddOrder(t *testing.T) {
+	for i := 0; i < 10000; i++ {
+		t.Run(fmt.Sprintf("Run %d", i), func(t *testing.T) {
+			s := NewScheduler()
+			s.Start()
+			defer func() {
+				_ = s.GracefulStop(context.Background())
+			}()
+			wg := sync.WaitGroup{}
+			wg.Add(1)
+
+			var (
+				task1 = func(a ...any) {
+					fmt.Println("1")
+					wg.Done()
+				}
+
+				task2 = func(a ...any) {
+					fmt.Println("2")
+					wg.Done()
+				}
+			)
+
+			s.Add(time.Second, task1)
+			wg.Add(1)
+			s.Add(time.Second, task2)
+			wg.Wait()
+		})
+	}
 }

@@ -48,11 +48,11 @@ func (ins *TimerTaskLinkedList) Add(ent *TimerTaskEntry) *TimerTaskEntry {
 		// 1: There is a race condition between (list.A flushAll -> list.B Add) and (TimerTask Cancel list.A Remove)
 		ent.mu.Lock()
 		if ent.list.CompareAndSwap(nil, ins) {
-			root := ins.root
-			ent.prev = root
-			ent.next = root.next
-			ent.prev.next = ent
-			ent.next.prev = ent
+			tail := ins.root.prev
+			ent.next = ins.root
+			ent.prev = tail
+			tail.next = ent
+			ins.root.prev = ent
 			done = true
 		}
 		ent.mu.Unlock()
