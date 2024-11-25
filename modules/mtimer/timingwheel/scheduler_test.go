@@ -14,6 +14,8 @@ import (
    @2024 8月 周日 15:50
 */
 
+// TestTimingWheel_DelayFunc tests the behavior of the scheduler when adding tasks with a delay
+// TestTimingWheel_DelayFunc 测试调度程序在添加延迟任务时的行为
 func TestTimingWheel_DelayFunc(t *testing.T) {
 	s := NewScheduler()
 	s.Start()
@@ -50,6 +52,10 @@ func TestTimingWheel_DelayFunc(t *testing.T) {
 	}
 }
 
+// TestScheduler_AddSingle tests the behavior of adding a single task to the scheduler
+// Verifies the accuracy of task execution time
+// TestScheduler_AddSingle 测试向调度程序添加单个任务的行为
+// 验证任务执行时间准确性
 func TestScheduler_AddSingle(t *testing.T) {
 	s := NewScheduler()
 	s.Start()
@@ -66,6 +72,10 @@ func TestScheduler_AddSingle(t *testing.T) {
 	fmt.Println("time since: ", time.Since(start).String())
 }
 
+// TestScheduler_Add tests the behavior of adding multiple tasks to the scheduler
+// Verifies the accuracy of task execution time
+// TestScheduler_Add 测试向调度程序添加多个任务的行为
+// 验证任务执行时间准确性
 func TestScheduler_Add(t *testing.T) {
 	s := NewScheduler()
 	s.Start()
@@ -96,6 +106,8 @@ func TestScheduler_Add(t *testing.T) {
 	wg.Wait()
 }
 
+// TestScheduler_AddCancel tests the behavior of canceling a task
+// TestScheduler_AddCancel 测试取消任务的行为
 func TestScheduler_TimerCancel(t *testing.T) {
 	s := NewScheduler()
 	s.Start()
@@ -119,21 +131,8 @@ func TestScheduler_TimerCancel(t *testing.T) {
 	}
 }
 
-func checkTimeCost(t *testing.T, start, end time.Time, before int, after int) bool {
-	due := end.Sub(start)
-	if due > time.Duration(after)*time.Millisecond {
-		t.Error("delay run")
-		return false
-	}
-
-	if due < time.Duration(before)*time.Millisecond {
-		t.Error("run ahead")
-		return false
-	}
-
-	return true
-}
-
+// Test_Channel tests the behavior of a closed channel
+// Test_Channel 测试已关闭通道的行为
 func Test_Channel(t *testing.T) {
 	ch := make(chan int, 2)
 	ch <- 1
@@ -150,6 +149,8 @@ func Test_Channel(t *testing.T) {
 	fmt.Printf("val: %d, ok: %v\n", val, ok) // 输出: val: 0, ok: false
 }
 
+// Test_AddOrder tests that tasks are executed in the order they were added
+// Test_AddOrder 测试任务按添加顺序执行
 func Test_AddOrder(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		t.Run(fmt.Sprintf("Run %d", i), func(t *testing.T) {
@@ -190,4 +191,19 @@ func Test_AddOrder(t *testing.T) {
 			}
 		})
 	}
+}
+
+func checkTimeCost(t *testing.T, start, end time.Time, before int, after int) bool {
+	due := end.Sub(start)
+	if due > time.Duration(after)*time.Millisecond {
+		t.Error("delay run")
+		return false
+	}
+
+	if due < time.Duration(before)*time.Millisecond {
+		t.Error("run ahead")
+		return false
+	}
+
+	return true
 }
