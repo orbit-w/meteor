@@ -13,6 +13,9 @@ func genD(i int) time.Duration {
 	return time.Duration(i%10000) * time.Millisecond
 }
 
+// BenchmarkTimingWheel_StartStop Benchmark the performance of starting and stopping timer tasks
+// in the timing wheel
+// BenchmarkTimingWheel_StartStop 基准测试时间轮定时任务启动和停止的性能
 func BenchmarkTimingWheel_StartStop(b *testing.B) {
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
@@ -56,6 +59,9 @@ func BenchmarkTimingWheel_StartStop(b *testing.B) {
 	}
 }
 
+// BenchmarkStandardTimer_StartStop Benchmark the performance of starting and stopping timer tasks
+// in the standard timer
+// BenchmarkStandardTimer_StartStop 基准测试标准定时器启动和停止的性能
 func BenchmarkStandardTimer_StartStop(b *testing.B) {
 	cases := []struct {
 		name string
