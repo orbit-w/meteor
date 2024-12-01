@@ -19,3 +19,13 @@ const (
 	fieldTypeInt    = "int"
 	fieldTypeBytes  = "bytes"
 )
+
+const (
+	RowChineseName = iota
+	RowDesc
+	RowName
+	RowType
+	RowPermission
+	RowKey
+	RawDataStart
+)
