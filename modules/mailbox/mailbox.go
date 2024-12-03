@@ -1,11 +1,12 @@
 package mailbox
 
 import (
-	"github.com/orbit-w/meteor/modules/mailbox/queue"
 	"log"
 	"runtime"
 	"runtime/debug"
 	"sync/atomic"
+
+	"github.com/orbit-w/meteor/modules/mailbox/queue"
 )
 
 type IQueue interface {
@@ -53,8 +54,8 @@ type IMailbox interface {
 type MailBox struct {
 	status        atomic.Int32
 	suspended     atomic.Int32
-	messages      atomic.Uint32
-	sysMessages   atomic.Uint32
+	messages      atomic.Int32
+	sysMessages   atomic.Int32
 	processLimit  int
 	priorityQueue *queue.Queue
 	queue         IQueue
