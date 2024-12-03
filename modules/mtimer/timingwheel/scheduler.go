@@ -8,13 +8,14 @@ package timewheel
 
 import (
 	"context"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/orbit-w/meteor/bases/misc/gerror"
 	"github.com/orbit-w/meteor/modules/mlog"
 	"github.com/orbit-w/meteor/modules/unbounded"
 	"go.uber.org/zap"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 /*
@@ -52,7 +53,6 @@ type IScheduler interface {
 // Scheduler 结构体，使用多层时间轮管理任务调度
 type Scheduler struct {
 	state    atomic.Uint32
-	mux      sync.Mutex
 	idGen    atomic.Uint64
 	tw       *TimingWheel
 	log      *mlog.ZapLogger
@@ -140,7 +140,6 @@ func (s *Scheduler) Stop() {
 			s.log.Error("scheduler stop failed", zap.Error(err))
 		}
 	}()
-	return
 }
 
 // stop stops the Scheduler and waits for all goroutines to finish

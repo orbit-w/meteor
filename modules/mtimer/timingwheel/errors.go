@@ -9,5 +9,5 @@ import "errors"
 */
 
 var (
-	tickMsErr = errors.New("tick must be greater than or equal to 1ms")
+	errTickMs = errors.New("tick must be greater than or equal to 1ms")
 )
