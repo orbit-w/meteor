@@ -1,11 +1,11 @@
 package timewheel
 
 import (
-	"github.com/orbit-w/meteor/modules/mlog"
-	"github.com/orbit-w/meteor/modules/mtimer/timingwheel/delayqueue"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/orbit-w/meteor/modules/mtimer/timingwheel/delayqueue"
 )
 
 // TimingWheel struct that manages the scheduling of timer tasks using a hierarchical time wheel.
@@ -22,7 +22,7 @@ type TimingWheel struct {
 	overflowWheel atomic.Pointer[TimingWheel] // Pointer to the overflow time wheel.
 	handler       func(t *TimerTask) error    // Function to handle timer tasks.
 	close         chan struct{}
-	log           *mlog.ZapLogger
+	//log           *mlog.ZapLogger
 }
 
 // NewTimingWheel creates a new TimingWheel instance
@@ -36,7 +36,7 @@ type TimingWheel struct {
 func NewTimingWheel(tick time.Duration, wheelSize int64, handle func(t *TimerTask) error) *TimingWheel {
 	tickMs := int64(tick / time.Millisecond)
 	if tickMs <= 0 {
-		panic(tickMsErr)
+		panic(errTickMs)
 	}
 
 	startMs := time.Now().UTC().UnixMilli()
