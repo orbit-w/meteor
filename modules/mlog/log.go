@@ -7,30 +7,55 @@ import (
 )
 
 func Error(msg string, fields ...zap.Field) {
-	baseLogger.Error(msg, fields...)
+	getBaseLogger().Error(msg, fields...)
 }
 
 func Info(msg string, fields ...zap.Field) {
-	baseLogger.Info(msg, fields...)
+	getBaseLogger().Info(msg, fields...)
 }
 
 func Debug(msg string, fields ...zap.Field) {
-	baseLogger.Debug(msg, fields...)
+	getBaseLogger().Debug(msg, fields...)
 }
 
 func Warn(msg string, fields ...zap.Field) {
-	baseLogger.Warn(msg, fields...)
+	getBaseLogger().Warn(msg, fields...)
 }
 
 func DPanic(msg string, fields ...zap.Field) {
-	baseLogger.DPanic(msg, fields...)
+	getBaseLogger().DPanic(msg, fields...)
 }
 
 func Panic(msg string, fields ...zap.Field) {
-	baseLogger.Panic(msg, fields...)
+	getBaseLogger().Panic(msg, fields...)
 }
 
 func Errorf(format string, args []any, field ...zap.Field) {
 	msg := fmt.Sprintf(format, args...)
-	baseLogger.Error(msg, field...)
+	getBaseLogger().Error(msg, field...)
+}
+
+func Infof(format string, args []any, field ...zap.Field) {
+	msg := fmt.Sprintf(format, args...)
+	getBaseLogger().Info(msg, field...)
+}
+
+func Debugf(format string, args []any, field ...zap.Field) {
+	msg := fmt.Sprintf(format, args...)
+	getBaseLogger().Debug(msg, field...)
+}
+
+func Warnf(format string, args []any, field ...zap.Field) {
+	msg := fmt.Sprintf(format, args...)
+	getBaseLogger().Warn(msg, field...)
+}
+
+func DPanicf(format string, args []any, field ...zap.Field) {
+	msg := fmt.Sprintf(format, args...)
+	getBaseLogger().DPanic(msg, field...)
+}
+
+func Panicf(format string, args []any, field ...zap.Field) {
+	msg := fmt.Sprintf(format, args...)
+	getBaseLogger().Panic(msg, field...)
 }

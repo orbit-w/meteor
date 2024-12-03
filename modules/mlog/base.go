@@ -23,8 +23,6 @@ const (
 	FlagStage  = "logStage" //服务环境
 )
 
-const d = 2
-
 func NewZapLogger() *zap.Logger {
 	var (
 		dir string
