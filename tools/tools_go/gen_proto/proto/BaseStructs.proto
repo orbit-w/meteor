@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package Structs;
+
+message Pos {
+  optional int32 x = 1;
+  optional int32 y = 2;
+}
+
+message Coords {
+  optional double x = 1;
+  optional double y = 2;
+}
+
+message Rec {
+  optional Pos pos = 1;
+  repeated int32 list = 2;
+}
+
