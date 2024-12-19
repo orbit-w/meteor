@@ -182,5 +182,5 @@ func (ts *TcpServerConn) heartbeat() {
 }
 
 func newTcpServerConnPrefixLogger() *mlog_v2.Logger {
-	return mlog_v2.WithPrefix("Transport TcpServer conn")
+	return logger.With(zap.String("TransportModel", "TcpServer conn"))
 }

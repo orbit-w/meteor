@@ -359,5 +359,5 @@ func parseOptions(ops ...*DialOption) (dp *DialOption) {
 }
 
 func newTcpClientPrefixLogger() *mlog_v2.Logger {
-	return mlog_v2.WithPrefix("Transport TcpClient")
+	return logger.With(zap.String("TransportModel", "TcpClient"))
 }
