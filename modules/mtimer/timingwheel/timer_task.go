@@ -2,13 +2,12 @@ package timewheel
 
 import (
 	"github.com/orbit-w/meteor/modules/mlog_v2"
+	"go.uber.org/zap"
 	"reflect"
 	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"go.uber.org/zap"
 )
 
 /*
@@ -35,12 +34,14 @@ func newCallback(f func(...any), args ...any) Callback {
 func (cb *Callback) Exec() {
 	defer func() {
 		if err := recover(); err != nil {
-			funcName := runtime.FuncForPC(reflect.ValueOf(cb.f).Pointer()).Name()
-			mlog_v2.Error("timer callback panic",
-				zap.Any("error", err),
-				zap.String("func", funcName),
-				zap.Stack("stack"),
-				zap.Any("args", cb.args))
+			if cb.f != nil {
+				funcName := runtime.FuncForPC(reflect.ValueOf(cb.f).Pointer()).Name()
+				mlog_v2.Error("timer callback panic",
+					zap.Any("error", err),
+					zap.String("func", funcName),
+					zap.Stack("stack"),
+					zap.Any("args", cb.args))
+			}
 			return
 		}
 	}()

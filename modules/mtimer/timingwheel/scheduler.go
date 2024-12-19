@@ -9,13 +9,13 @@ package timewheel
 import (
 	"context"
 	"github.com/orbit-w/meteor/modules/mlog_v2"
+	"go.uber.org/zap"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/orbit-w/meteor/bases/misc/gerror"
 	"github.com/orbit-w/meteor/modules/unbounded"
-	"go.uber.org/zap"
 )
 
 /*
@@ -55,7 +55,6 @@ type Scheduler struct {
 	state    atomic.Uint32
 	idGen    atomic.Uint64
 	tw       *TimingWheel
-	log      *mlog_v2.Logger
 	ch       unbounded.IUnbounded[*TimerTask]
 	wg       sync.WaitGroup
 	complete chan struct{}
@@ -66,7 +65,6 @@ type Scheduler struct {
 func NewScheduler() *Scheduler {
 	s := &Scheduler{
 		ch:       unbounded.New[*TimerTask](1024),
-		log:      mlog_v2.WithPrefix("scheduler"),
 		wg:       sync.WaitGroup{},
 		complete: make(chan struct{}, 1),
 	}
@@ -133,13 +131,7 @@ func (s *Scheduler) Stop() {
 		return
 	}
 
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-		defer cancel()
-		if err := s.stop(ctx); err != nil {
-			s.log.Error("scheduler stop failed", zap.Error(err))
-		}
-	}()
+	s.tw.stop()
 }
 
 // stop stops the Scheduler and waits for all goroutines to finish
@@ -191,7 +183,7 @@ func (s *Scheduler) handleTimer(t *TimerTask) error {
 	// Define the sender function to handle tasks.
 	err := s.ch.Send(t)
 	if err != nil {
-		s.log.Error("send callback failed", zap.Error(err))
+		mlog_v2.Error("send callback failed", zap.Error(err))
 	}
 	return err
 }
