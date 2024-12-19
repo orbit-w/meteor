@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"sync"
 )
 
 /*
@@ -15,6 +16,7 @@ import (
 
 var (
 	baseLogger *zap.Logger
+	once       sync.Once
 )
 
 const (
@@ -55,9 +57,9 @@ func selectLevel(lv string) zapcore.Level {
 }
 
 func getBaseLogger() *zap.Logger {
-	if baseLogger == nil {
+	once.Do(func() {
 		baseLogger = NewZapLogger()
-	}
+	})
 	return baseLogger
 }
 

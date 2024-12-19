@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/orbit-w/meteor/bases/misc/number_utils"
-	"github.com/orbit-w/meteor/modules/mlog"
 	gnetwork "github.com/orbit-w/meteor/modules/net/network"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"io"
@@ -36,7 +34,6 @@ func Test_Echo_128K(t *testing.T) {
 }
 
 func Test_Echo_Monitor(t *testing.T) {
-	viper.Set(mlog.FlagLogDir, "./transport.log")
 	host := "127.0.0.1:6800"
 	s := ServeTest(t, host, true)
 	defer s.Stop()
@@ -123,7 +120,6 @@ func Test_Transport(t *testing.T) {
 }
 
 func Test_Gzip(t *testing.T) {
-	viper.Set(mlog.FlagLogDir, "./transport.log")
 	host := "127.0.0.1:6800"
 	s := ServeGzipTest(t, host, true)
 	ctx := context.Background()
@@ -162,8 +158,6 @@ func Test_parseConfig(t *testing.T) {
 }
 
 func Test_Logger(t *testing.T) {
-	viper.Set(mlog.FlagLogDir, "./transport.log")
-
 	remoteAddr := "127.0.0.1"
 	buf := new(ControlBuffer)
 	BuildControlBuffer(buf, 65536)
@@ -195,7 +189,6 @@ type TestingT interface {
 }
 
 func EchoConcurrencyTest(t *testing.T, size, loopNum, cNum, max int) {
-	viper.Set(mlog.FlagLogDir, "./transport.log")
 	for i := 0; i < loopNum; i++ {
 		execNum := number_utils.RandomInt(1, max)
 		echoConcurrencyTest(t, execNum, size, cNum)

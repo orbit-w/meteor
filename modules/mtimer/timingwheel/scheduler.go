@@ -8,12 +8,12 @@ package timewheel
 
 import (
 	"context"
+	"github.com/orbit-w/meteor/modules/mlog_v2"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/orbit-w/meteor/bases/misc/gerror"
-	"github.com/orbit-w/meteor/modules/mlog"
 	"github.com/orbit-w/meteor/modules/unbounded"
 	"go.uber.org/zap"
 )
@@ -55,7 +55,7 @@ type Scheduler struct {
 	state    atomic.Uint32
 	idGen    atomic.Uint64
 	tw       *TimingWheel
-	log      *mlog.ZapLogger
+	log      *mlog_v2.Logger
 	ch       unbounded.IUnbounded[*TimerTask]
 	wg       sync.WaitGroup
 	complete chan struct{}
@@ -66,7 +66,7 @@ type Scheduler struct {
 func NewScheduler() *Scheduler {
 	s := &Scheduler{
 		ch:       unbounded.New[*TimerTask](1024),
-		log:      mlog.NewLogger("scheduler"),
+		log:      mlog_v2.WithPrefix("scheduler"),
 		wg:       sync.WaitGroup{},
 		complete: make(chan struct{}, 1),
 	}

@@ -3,7 +3,7 @@ package transport
 import (
 	"context"
 	"github.com/orbit-w/meteor/bases/misc/utils"
-	"github.com/orbit-w/meteor/modules/mlog"
+	"github.com/orbit-w/meteor/modules/mlog_v2"
 	mnetwork "github.com/orbit-w/meteor/modules/net/network"
 	packet2 "github.com/orbit-w/meteor/modules/net/packet"
 	"github.com/orbit-w/meteor/modules/wrappers/sender_wrapper"
@@ -29,7 +29,7 @@ type TcpServerConn struct {
 	sw     *sender_wrapper.SenderWrapper
 	buf    *ControlBuffer
 	r      *mnetwork.BlockReceiver
-	logger *mlog.ZapLogger
+	logger *mlog_v2.Logger
 	m      *Monitor
 
 	writeTimeout time.Duration
@@ -181,6 +181,6 @@ func (ts *TcpServerConn) heartbeat() {
 	ts.logger.Info("Recv heartbeat", fields...)
 }
 
-func newTcpServerConnPrefixLogger() *mlog.ZapLogger {
-	return mlog.NewLogger("Transport TcpServer conn")
+func newTcpServerConnPrefixLogger() *mlog_v2.Logger {
+	return mlog_v2.WithPrefix("Transport TcpServer conn")
 }
