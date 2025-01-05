@@ -28,11 +28,11 @@ func TestPubSub_Publish(t *testing.T) {
 		count1 = 0
 	)
 
-	ps := NewPubSub(rdb.UniversalClient(), CodecJson, "test", func(pid int32, body []byte) {
+	ps := NewPubSub(rdb.UniversalClient(), CodecJson, "test", func(pid int32, body []byte, err error) {
 		count++
 	})
 
-	ps2 := NewPubSub(rdb.UniversalClient(), CodecJson, "test", func(pid int32, body []byte) {
+	ps2 := NewPubSub(rdb.UniversalClient(), CodecJson, "test", func(pid int32, body []byte, err error) {
 		count1++
 	})
 
@@ -70,11 +70,11 @@ func TestPubSub_Close(t *testing.T) {
 	)
 
 	var (
-		h1 = func(pid int32, body []byte) {
+		h1 = func(pid int32, body []byte, err error) {
 			count++
 		}
 
-		h2 = func(pid int32, body []byte) {
+		h2 = func(pid int32, body []byte, err error) {
 			count1++
 		}
 	)
@@ -124,7 +124,7 @@ func TestPubSub_Create(t *testing.T) {
 	}()
 
 	for i := 0; i < 500; i++ {
-		ps := NewPubSub(rdb.UniversalClient(), CodecJson, "test", func(pid int32, body []byte) {
+		ps := NewPubSub(rdb.UniversalClient(), CodecJson, "test", func(pid int32, body []byte, err error) {
 
 		})
 		ps.Subscribe()
@@ -138,12 +138,9 @@ func TestPubSub_Recovery(t *testing.T) {
 	ps := new(PubSub)
 	var s []byte
 	ps.log = mlog.WithPrefix("subpub_redis")
-	ps.invoker = func(pid int32, body []byte) {
+	ps.invoker = func(pid int32, body []byte, err error) {
 		s[2] = 1
 	}
-	ps.handleMessage(&PubMessage{
-		Pid:  10001,
-		Data: []byte("hello"),
-	})
+	ps.invoke(10001, []byte("hello"), nil)
 	time.Sleep(time.Second * 5)
 }

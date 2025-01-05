@@ -2,6 +2,7 @@ package subpub_redis
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"runtime/debug"
 	"sync/atomic"
@@ -9,7 +10,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/orbit-w/meteor/modules/mlog"
 	"github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
 )
 
 type IPubSub interface {
@@ -25,7 +25,7 @@ type PubSub struct {
 	cli         redis.UniversalClient
 	sub         *redis.PubSub
 	log         *mlog.Logger
-	invoker     func(pid int32, body []byte)
+	invoker     func(pid int32, body []byte, err error)
 }
 
 var (
@@ -36,7 +36,7 @@ type IEncoder interface {
 	Marshal(v interface{}) ([]byte, error)
 }
 
-func NewPubSub(_cli redis.UniversalClient, ee int, topic string, _invoker func(pid int32, body []byte)) IPubSub {
+func NewPubSub(_cli redis.UniversalClient, ee int, topic string, _invoker func(pid int32, body []byte, err error)) IPubSub {
 	return &PubSub{
 		topic:       topic,
 		invoker:     _invoker,
@@ -85,23 +85,25 @@ func (ps *PubSub) subscribe(handle func(msg *redis.Message)) {
 }
 
 func (ps *PubSub) decodeAndInvoke(msg *redis.Message) {
-	pb := new(PubMessage)
-	if err := proto.Unmarshal([]byte(msg.Payload), pb); err != nil {
-		ps.log.Error("[PubSub] decode proto failed: ", zap.Error(err))
-		return
+	var (
+		err error
+		pb  = new(PubMessage)
+	)
+
+	if err = proto.Unmarshal([]byte(msg.Payload), pb); err != nil {
+		err = fmt.Errorf("[PubSub] decode proto failed : %w", err)
 	}
 
-	ps.handleMessage(pb)
+	ps.invoke(pb.Pid, pb.Data, err)
 	return
 }
 
-func (ps *PubSub) handleMessage(msg *PubMessage) {
+func (ps *PubSub) invoke(pid int32, data []byte, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			//ps.log.Error("panic", zap.Any("recover", r), zap.String("stack", string(debug.Stack())))
 			log.Println(r)
 			log.Println("Stack: ", string(debug.Stack()))
 		}
 	}()
-	ps.invoker(msg.Pid, msg.Data)
+	ps.invoker(pid, data, err)
 }

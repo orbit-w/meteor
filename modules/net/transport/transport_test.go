@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/orbit-w/meteor/bases/misc/number_utils"
-	gnetwork "github.com/orbit-w/meteor/modules/net/network"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
@@ -162,19 +161,19 @@ func Test_Logger(t *testing.T) {
 	remoteAddr := "127.0.0.1"
 	buf := new(ControlBuffer)
 	BuildControlBuffer(buf, 65536)
-	_ctx, cancel := context.WithCancel(context.Background())
+	//_ctx, cancel := context.WithCancel(context.Background())
 	tc := &TcpClient{
-		remoteAddr:      remoteAddr,
-		maxIncomingSize: 65536,
-		buf:             buf,
-		ctx:             _ctx,
-		cancel:          cancel,
-		codec:           gnetwork.NewCodec(65536, false, time.Minute),
-		r:               gnetwork.NewBlockReceiver(),
-		writeTimeout:    time.Minute,
-		connCond:        sync.NewCond(&sync.Mutex{}),
-		connState:       idle,
-		logger:          newTcpClientPrefixLogger(),
+		remoteAddr: remoteAddr,
+		//maxIncomingSize: 65536,
+		// buf:             buf,
+		// ctx:             _ctx,
+		// cancel:          cancel,
+		// codec:           gnetwork.NewCodec(65536, false, time.Minute),
+		// r:               gnetwork.NewBlockReceiver(),
+		// writeTimeout:    time.Minute,
+		// connCond:        sync.NewCond(&sync.Mutex{}),
+		// connState:       idle,
+		logger: newTcpClientPrefixLogger(),
 	}
 	tc.logger.Error("test info, err: ", zap.Error(ErrCanceled))
 	tc.logger.Error("test info, err: ", zap.Error(ErrDisconnected))

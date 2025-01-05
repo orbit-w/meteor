@@ -1,4 +1,4 @@
-package mlog_v2
+package mlog
 
 import (
 	"context"
