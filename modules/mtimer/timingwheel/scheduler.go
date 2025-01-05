@@ -8,13 +8,14 @@ package timewheel
 
 import (
 	"context"
-	"github.com/orbit-w/meteor/modules/mlog_v2"
-	"go.uber.org/zap"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/orbit-w/meteor/bases/misc/gerror"
+	"github.com/orbit-w/meteor/modules/mlog"
 	"github.com/orbit-w/meteor/modules/unbounded"
 )
 
@@ -183,7 +184,7 @@ func (s *Scheduler) handleTimer(t *TimerTask) error {
 	// Define the sender function to handle tasks.
 	err := s.ch.Send(t)
 	if err != nil {
-		mlog_v2.Error("send callback failed", zap.Error(err))
+		mlog.Error("send callback failed", zap.Error(err))
 	}
 	return err
 }

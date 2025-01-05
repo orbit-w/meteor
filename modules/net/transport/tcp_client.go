@@ -2,18 +2,19 @@ package transport
 
 import (
 	"context"
-	"github.com/orbit-w/meteor/bases/misc/number_utils"
-	"github.com/orbit-w/meteor/bases/misc/utils"
-	"github.com/orbit-w/meteor/modules/mlog_v2"
-	mnetwork "github.com/orbit-w/meteor/modules/net/network"
-	packet2 "github.com/orbit-w/meteor/modules/net/packet"
-	"github.com/orbit-w/meteor/modules/wrappers/sender_wrapper"
-	"go.uber.org/zap"
 	"io"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/orbit-w/meteor/bases/misc/number_utils"
+	"github.com/orbit-w/meteor/bases/misc/utils"
+	"github.com/orbit-w/meteor/modules/mlog"
+	mnetwork "github.com/orbit-w/meteor/modules/net/network"
+	packet2 "github.com/orbit-w/meteor/modules/net/packet"
+	"github.com/orbit-w/meteor/modules/wrappers/sender_wrapper"
+	"go.uber.org/zap"
 )
 
 /*
@@ -42,7 +43,7 @@ type TcpClient struct {
 
 	connState int8       //代表链接状态
 	connCond  *sync.Cond //链接状态条件变量
-	logger    *mlog_v2.Logger
+	logger    *mlog.Logger
 }
 
 func DialContextByDefaultOp(ctx context.Context, remoteAddr string) IConn {
@@ -143,7 +144,6 @@ func (tc *TcpClient) handleDial(_ *DialOption) {
 
 	tc.sw = sender_wrapper.NewSender(tc.SendData)
 	tc.buf.Run(tc.sw)
-	tc.conn.LocalAddr().String()
 	tc.remoteAddr = tc.conn.RemoteAddr().String()
 	tc.localAddr = tc.conn.LocalAddr().String()
 	go tc.keepalive()
@@ -358,6 +358,6 @@ func parseOptions(ops ...*DialOption) (dp *DialOption) {
 	return
 }
 
-func newTcpClientPrefixLogger() *mlog_v2.Logger {
-	return logger.With(zap.String("TransportModel", "TcpClient"))
+func newTcpClientPrefixLogger() *mlog.Logger {
+	return mlog.With(zap.String("TransportModel", "TcpClient"))
 }

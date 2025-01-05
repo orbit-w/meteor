@@ -2,13 +2,14 @@ package subpub_redis
 
 import (
 	"context"
-	"github.com/gogo/protobuf/proto"
-	"github.com/orbit-w/meteor/modules/mlog_v2"
-	"github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
 	"log"
 	"runtime/debug"
 	"sync/atomic"
+
+	"github.com/gogo/protobuf/proto"
+	"github.com/orbit-w/meteor/modules/mlog"
+	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 )
 
 type IPubSub interface {
@@ -23,7 +24,7 @@ type PubSub struct {
 	topic       string //主题名称
 	cli         redis.UniversalClient
 	sub         *redis.PubSub
-	log         *mlog_v2.Logger
+	log         *mlog.Logger
 	invoker     func(pid int32, body []byte)
 }
 
@@ -41,7 +42,7 @@ func NewPubSub(_cli redis.UniversalClient, ee int, topic string, _invoker func(p
 		invoker:     _invoker,
 		cli:         _cli,
 		encoderEnum: ee,
-		log:         mlog_v2.WithPrefix("subpub_redis"),
+		log:         mlog.WithPrefix("subpub_redis"),
 	}
 }
 

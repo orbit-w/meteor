@@ -1,7 +1,7 @@
 package transport
 
 import (
-	mlog "github.com/orbit-w/meteor/modules/mlog_v2"
+	"github.com/orbit-w/meteor/modules/mlog"
 )
 
 var (

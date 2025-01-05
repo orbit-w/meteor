@@ -2,15 +2,16 @@ package transport
 
 import (
 	"context"
+	"io"
+	"net"
+	"time"
+
 	"github.com/orbit-w/meteor/bases/misc/utils"
-	"github.com/orbit-w/meteor/modules/mlog_v2"
+	"github.com/orbit-w/meteor/modules/mlog"
 	mnetwork "github.com/orbit-w/meteor/modules/net/network"
 	packet2 "github.com/orbit-w/meteor/modules/net/packet"
 	"github.com/orbit-w/meteor/modules/wrappers/sender_wrapper"
 	"go.uber.org/zap"
-	"io"
-	"net"
-	"time"
 )
 
 /*
@@ -29,7 +30,7 @@ type TcpServerConn struct {
 	sw     *sender_wrapper.SenderWrapper
 	buf    *ControlBuffer
 	r      *mnetwork.BlockReceiver
-	logger *mlog_v2.Logger
+	logger *mlog.Logger
 	m      *Monitor
 
 	writeTimeout time.Duration
@@ -181,6 +182,6 @@ func (ts *TcpServerConn) heartbeat() {
 	ts.logger.Info("Recv heartbeat", fields...)
 }
 
-func newTcpServerConnPrefixLogger() *mlog_v2.Logger {
-	return logger.With(zap.String("TransportModel", "TcpServer conn"))
+func newTcpServerConnPrefixLogger() *mlog.Logger {
+	return mlog.With(zap.String("TransportModel", "TcpServer conn"))
 }

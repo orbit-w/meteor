@@ -1,4 +1,4 @@
-package mlog_v2
+package mlog
 
 import (
 	"bytes"
@@ -316,6 +316,6 @@ func testCaller(t *testing.T, logger *Logger) {
 	testCaller2(t, logger)
 }
 
-func testCaller2(t *testing.T, logger *Logger) {
+func testCaller2(_ *testing.T, logger *Logger) {
 	logger.Errorf("test message")
 }

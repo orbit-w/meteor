@@ -1,61 +1,55 @@
-package mlog
+package mlog_v2
 
 import (
-	"fmt"
+	"time"
 
 	"go.uber.org/zap"
+	"golang.org/x/net/context"
 )
 
-func Error(msg string, fields ...zap.Field) {
-	getBaseLogger().Error(msg, fields...)
+var (
+	// global is the global logger instance
+	global = NewDevelopmentLogger()
+)
+
+// Global logger methods
+func Info(msg string, fields ...zap.Field)      { global.Info(msg, fields...) }
+func Infof(format string, args ...interface{})  { global.Infof(format, args...) }
+func Debug(msg string, fields ...zap.Field)     { global.Debug(msg, fields...) }
+func Debugf(format string, args ...interface{}) { global.Debugf(format, args...) }
+func Warn(msg string, fields ...zap.Field)      { global.Warn(msg, fields...) }
+func Warnf(format string, args ...interface{})  { global.Warnf(format, args...) }
+func Error(msg string, fields ...zap.Field)     { global.Error(msg, fields...) }
+func Errorf(format string, args ...interface{}) { global.Errorf(format, args...) }
+func Fatal(msg string, fields ...zap.Field)     { global.Fatal(msg, fields...) }
+func Fatalf(format string, args ...interface{}) { global.Fatalf(format, args...) }
+func Panic(msg string, fields ...zap.Field)     { global.Panic(msg, fields...) }
+func Panicf(format string, args ...interface{}) { global.Panicf(format, args...) }
+
+func With(fields ...zap.Field) *Logger {
+	return global.With(fields...)
 }
 
-func Info(msg string, fields ...zap.Field) {
-	getBaseLogger().Info(msg, fields...)
+func WithPrefix(prefix string) *Logger {
+	return global.With(zap.String("Prefix", prefix))
 }
 
-func Debug(msg string, fields ...zap.Field) {
-	getBaseLogger().Debug(msg, fields...)
-}
+func Stop() {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+	defer func() {
+		cancel()
+	}()
 
-func Warn(msg string, fields ...zap.Field) {
-	getBaseLogger().Warn(msg, fields...)
-}
+	ch := make(chan struct{}, 1)
 
-func DPanic(msg string, fields ...zap.Field) {
-	getBaseLogger().DPanic(msg, fields...)
-}
+	go func() {
+		_ = global.Sync()
+		close(ch)
+	}()
 
-func Panic(msg string, fields ...zap.Field) {
-	getBaseLogger().Panic(msg, fields...)
-}
+	select {
+	case <-ch:
+	case <-ctx.Done():
 
-func Errorf(format string, args []any, field ...zap.Field) {
-	msg := fmt.Sprintf(format, args...)
-	getBaseLogger().Error(msg, field...)
-}
-
-func Infof(format string, args []any, field ...zap.Field) {
-	msg := fmt.Sprintf(format, args...)
-	getBaseLogger().Info(msg, field...)
-}
-
-func Debugf(format string, args []any, field ...zap.Field) {
-	msg := fmt.Sprintf(format, args...)
-	getBaseLogger().Debug(msg, field...)
-}
-
-func Warnf(format string, args []any, field ...zap.Field) {
-	msg := fmt.Sprintf(format, args...)
-	getBaseLogger().Warn(msg, field...)
-}
-
-func DPanicf(format string, args []any, field ...zap.Field) {
-	msg := fmt.Sprintf(format, args...)
-	getBaseLogger().DPanic(msg, field...)
-}
-
-func Panicf(format string, args []any, field ...zap.Field) {
-	msg := fmt.Sprintf(format, args...)
-	getBaseLogger().Panic(msg, field...)
+	}
 }

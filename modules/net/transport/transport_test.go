@@ -4,16 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/orbit-w/meteor/bases/misc/number_utils"
-	gnetwork "github.com/orbit-w/meteor/modules/net/network"
-	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 	"io"
 	"log"
 	"runtime"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/orbit-w/meteor/bases/misc/number_utils"
+	gnetwork "github.com/orbit-w/meteor/modules/net/network"
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
 
 var (
@@ -258,7 +259,7 @@ func ServeGzipTest(t TestingT, host string, print bool) IServer {
 	return serveTest(t, host, print, DefaultGzipServerConfig())
 }
 
-func serveTest(t TestingT, host string, print bool, conf *Config) IServer {
+func serveTest(_ TestingT, host string, print bool, conf *Config) IServer {
 	var (
 		server IServer
 		err    error
