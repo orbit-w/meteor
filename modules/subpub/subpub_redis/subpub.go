@@ -84,6 +84,7 @@ func (ps *PubSub) subscribe(handle func(msg *redis.Message)) {
 	}()
 }
 
+// Invoke failed, the business side is aware of the error.
 func (ps *PubSub) decodeAndInvoke(msg *redis.Message) {
 	var (
 		err error
