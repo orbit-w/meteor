@@ -3,7 +3,6 @@ package mysqldb
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 	"time"
 
@@ -86,7 +85,7 @@ func (m *GormInstanceMgr) initializeDB(key DatabaseKey, instanceCfg InstanceConf
 	sqlDB.SetMaxOpenConns(instanceCfg.Pool.MaxOpenConns)
 
 	// 探活检查
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	// 使用 Ping 探活
@@ -144,25 +143,6 @@ func NewFromFile(filename string) (*GormInstanceMgr, error) {
 	return New(*config)
 }
 
-// NewFromEnv 从环境变量创建管理器实例
-// 环境变量格式：
-// - MYSQL_CONFIG_FILE: 配置文件路径
-func NewFromEnv() (*GormInstanceMgr, error) {
-	configFile := os.Getenv("MYSQL_CONFIG_FILE")
-	if configFile == "" {
-		// 尝试常见的配置文件名
-		for _, name := range []string{"mysql.yaml", "mysql.yml", "mysql.toml"} {
-			loader := NewConfigLoader()
-			config, err := loader.LoadConfig(name)
-			if err == nil {
-				return New(*config)
-			}
-		}
-		return nil, fmt.Errorf("未找到配置文件，请设置 MYSQL_CONFIG_FILE 环境变量或在默认路径下创建配置文件")
-	}
-	return NewFromFile(configFile)
-}
-
 // MustNew 创建管理器实例，如果出错则panic
 func MustNew(config ManagerConfig) *GormInstanceMgr {
 	mgr, err := New(config)
@@ -175,15 +155,6 @@ func MustNew(config ManagerConfig) *GormInstanceMgr {
 // MustNewFromFile 从配置文件创建管理器实例，如果出错则panic
 func MustNewFromFile(filename string) *GormInstanceMgr {
 	mgr, err := NewFromFile(filename)
-	if err != nil {
-		panic(err)
-	}
-	return mgr
-}
-
-// MustNewFromEnv 从环境变量创建管理器实例，如果出错则panic
-func MustNewFromEnv() *GormInstanceMgr {
-	mgr, err := NewFromEnv()
 	if err != nil {
 		panic(err)
 	}

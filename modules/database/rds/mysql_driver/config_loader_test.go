@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -72,11 +71,6 @@ func TestConfigLoader_LoadConfig(t *testing.T) {
 			// 验证连接池配置
 			assert.Equal(t, 10, instance.Config.Pool.MaxIdleConns)
 			assert.Equal(t, 100, instance.Config.Pool.MaxOpenConns)
-
-			// 验证重试策略
-			assert.Equal(t, 3, instance.Config.Retry.MaxRetries)
-			assert.Equal(t, time.Second, instance.Config.Retry.InitialInterval)
-			assert.Equal(t, 10*time.Second, instance.Config.Retry.MaxInterval)
 
 			// 验证数据库配置
 			require.NotEmpty(t, instance.Databases)

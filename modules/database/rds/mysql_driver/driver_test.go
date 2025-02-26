@@ -33,11 +33,6 @@ var testConfig = ManagerConfig{
 					MaxIdleConns: 10,
 					MaxOpenConns: 100,
 				},
-				Retry: RetryPolicy{
-					MaxRetries:      3,
-					InitialInterval: time.Second,
-					MaxInterval:     time.Second * 10,
-				},
 			},
 			Databases: []DatabaseConfig{
 				{

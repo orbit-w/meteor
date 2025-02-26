@@ -1,17 +1,8 @@
 package mysqldb
 
-import "time"
-
 type (
 	// AccessMode 访问模式
 	AccessMode string
-
-	// RetryPolicy 重试策略配置
-	RetryPolicy struct {
-		MaxRetries      int           `yaml:"max_retries" toml:"max_retries"`           // 最大重试次数
-		InitialInterval time.Duration `yaml:"initial_interval" toml:"initial_interval"` // 初始重试间隔
-		MaxInterval     time.Duration `yaml:"max_interval" toml:"max_interval"`         // 最大重试间隔
-	}
 
 	// PoolConfig 连接池配置
 	PoolConfig struct {
@@ -21,12 +12,11 @@ type (
 
 	// InstanceConfig MySQL实例配置
 	InstanceConfig struct {
-		Host     string      `yaml:"host" toml:"host"`         // MySQL服务器地址
-		Port     int         `yaml:"port" toml:"port"`         // 端口号
-		Username string      `yaml:"username" toml:"username"` // 数据库用户名
-		Password string      `yaml:"password" toml:"password"` // 数据库密码
-		Pool     PoolConfig  `yaml:"pool" toml:"pool"`         // 连接池配置
-		Retry    RetryPolicy `yaml:"retry" toml:"retry"`       // 重试策略
+		Host     string     `yaml:"host" toml:"host"`         // MySQL服务器地址
+		Port     int        `yaml:"port" toml:"port"`         // 端口号
+		Username string     `yaml:"username" toml:"username"` // 数据库用户名
+		Password string     `yaml:"password" toml:"password"` // 数据库密码
+		Pool     PoolConfig `yaml:"pool" toml:"pool"`         // 连接池配置
 	}
 
 	// DatabaseConfig 数据库配置
@@ -57,15 +47,6 @@ func DefaultPoolConfig() PoolConfig {
 	}
 }
 
-// DefaultRetryPolicy 返回默认的重试策略
-func DefaultRetryPolicy() RetryPolicy {
-	return RetryPolicy{
-		MaxRetries:      3,                // 默认最大重试次数
-		InitialInterval: time.Second,      // 默认初始重试间隔
-		MaxInterval:     10 * time.Second, // 默认最大重试间隔
-	}
-}
-
 // DefaultInstanceConfig 返回默认的实例配置
 func DefaultInstanceConfig() InstanceConfig {
 	return InstanceConfig{
@@ -74,7 +55,6 @@ func DefaultInstanceConfig() InstanceConfig {
 		Username: "root",      // 默认用户名
 		Password: "",          // 默认密码为空
 		Pool:     DefaultPoolConfig(),
-		Retry:    DefaultRetryPolicy(),
 	}
 }
 
