@@ -1,0 +1,21 @@
+instances:
+  - config:
+      host: "localhost"
+      port: 3306
+      username: "root"
+      password: ""
+      pool:
+        max_idle_conns: 10
+        max_open_conns: 100
+      retry:
+        max_retries: 3
+        initial_interval: "1s"
+        max_interval: "10s"
+    databases:
+      - name: "test"
+        mode: "readonly"
+      - name: "test"
+        mode: "readwrite"
+  - config:
+      host: "host2"
+      # ... 其他实例配置

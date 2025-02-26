@@ -1,0 +1,49 @@
+# MySQL实例配置
+[[instances]]
+# 第一个实例配置
+[instances.config]
+host = "localhost"
+port = 3306
+username = "root"
+password = ""
+
+# 连接池配置
+[instances.config.pool]
+max_idle_conns = 10  # 最大空闲连接数
+max_open_conns = 100 # 最大打开连接数
+
+# 重试策略配置
+[instances.config.retry]
+max_retries = 3          # 最大重试次数
+initial_interval = "1s"   # 初始重试间隔
+max_interval = "10s"      # 最大重试间隔
+
+# 数据库配置
+[[instances.databases]]
+name = "test"
+mode = "readonly"
+
+[[instances.databases]]
+name = "test"
+mode = "readwrite"
+
+# 第二个实例配置（示例）
+[[instances]]
+[instances.config]
+host = "host2"
+port = 3306
+username = "user2"
+password = "pass2"
+
+[instances.config.pool]
+max_idle_conns = 5
+max_open_conns = 50
+
+[instances.config.retry]
+max_retries = 3
+initial_interval = "1s" 
+max_interval = "10s"
+
+[[instances.databases]]
+name = "db2"
+mode = "readonly"

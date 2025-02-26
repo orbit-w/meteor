@@ -1,0 +1,103 @@
+package mysqldb
+
+import "time"
+
+type (
+	// AccessMode 访问模式
+	AccessMode string
+
+	// RetryPolicy 重试策略配置
+	RetryPolicy struct {
+		MaxRetries      int           `yaml:"max_retries" toml:"max_retries"`           // 最大重试次数
+		InitialInterval time.Duration `yaml:"initial_interval" toml:"initial_interval"` // 初始重试间隔
+		MaxInterval     time.Duration `yaml:"max_interval" toml:"max_interval"`         // 最大重试间隔
+	}
+
+	// PoolConfig 连接池配置
+	PoolConfig struct {
+		MaxIdleConns int `yaml:"max_idle_conns" toml:"max_idle_conns"` // 最大空闲连接数
+		MaxOpenConns int `yaml:"max_open_conns" toml:"max_open_conns"` // 最大打开连接数
+	}
+
+	// InstanceConfig MySQL实例配置
+	InstanceConfig struct {
+		Host     string      `yaml:"host" toml:"host"`         // MySQL服务器地址
+		Port     int         `yaml:"port" toml:"port"`         // 端口号
+		Username string      `yaml:"username" toml:"username"` // 数据库用户名
+		Password string      `yaml:"password" toml:"password"` // 数据库密码
+		Pool     PoolConfig  `yaml:"pool" toml:"pool"`         // 连接池配置
+		Retry    RetryPolicy `yaml:"retry" toml:"retry"`       // 重试策略
+	}
+
+	// DatabaseConfig 数据库配置
+	DatabaseConfig struct {
+		Name string     `yaml:"name" toml:"name"` // 数据库名称
+		Mode AccessMode `yaml:"mode" toml:"mode"` // 访问模式
+	}
+
+	// ManagerConfig 集中式连接配置
+	ManagerConfig struct {
+		Instances []struct {
+			Config    InstanceConfig   `yaml:"config" toml:"config"`       // 实例配置
+			Databases []DatabaseConfig `yaml:"databases" toml:"databases"` // 数据库配置
+		} `yaml:"instances" toml:"instances"`
+	}
+)
+
+const (
+	ReadOnly  AccessMode = "readonly"  // 只读模式
+	ReadWrite AccessMode = "readwrite" // 读写模式
+)
+
+// DefaultPoolConfig 返回默认的连接池配置
+func DefaultPoolConfig() PoolConfig {
+	return PoolConfig{
+		MaxIdleConns: 10,  // 默认最大空闲连接数
+		MaxOpenConns: 100, // 默认最大打开连接数
+	}
+}
+
+// DefaultRetryPolicy 返回默认的重试策略
+func DefaultRetryPolicy() RetryPolicy {
+	return RetryPolicy{
+		MaxRetries:      3,                // 默认最大重试次数
+		InitialInterval: time.Second,      // 默认初始重试间隔
+		MaxInterval:     10 * time.Second, // 默认最大重试间隔
+	}
+}
+
+// DefaultInstanceConfig 返回默认的实例配置
+func DefaultInstanceConfig() InstanceConfig {
+	return InstanceConfig{
+		Host:     "localhost", // 默认主机地址
+		Port:     3306,        // 默认MySQL端口
+		Username: "root",      // 默认用户名
+		Password: "",          // 默认密码为空
+		Pool:     DefaultPoolConfig(),
+		Retry:    DefaultRetryPolicy(),
+	}
+}
+
+// DefaultManagerConfig 返回默认的管理器配置
+func DefaultManagerConfig() ManagerConfig {
+	return ManagerConfig{
+		Instances: []struct {
+			Config    InstanceConfig   `yaml:"config" toml:"config"`
+			Databases []DatabaseConfig `yaml:"databases" toml:"databases"`
+		}{
+			{
+				Config: DefaultInstanceConfig(),
+				Databases: []DatabaseConfig{
+					{
+						Name: "test",
+						Mode: ReadOnly,
+					},
+					{
+						Name: "test",
+						Mode: ReadWrite,
+					},
+				},
+			},
+		},
+	}
+}
