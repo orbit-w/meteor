@@ -10,6 +10,14 @@ type (
 		MaxOpenConns int `yaml:"max_open_conns" toml:"max_open_conns"` // 最大打开连接数
 	}
 
+	// LogLevel 日志级别
+	LogLevel string
+
+	// LogConfig 日志配置
+	LogConfig struct {
+		Level string `yaml:"level" toml:"level"` // 日志级别：silent, error, warn, info
+	}
+
 	// InstanceConfig MySQL实例配置
 	InstanceConfig struct {
 		Host     string     `yaml:"host" toml:"host"`         // MySQL服务器地址
@@ -17,6 +25,7 @@ type (
 		Username string     `yaml:"username" toml:"username"` // 数据库用户名
 		Password string     `yaml:"password" toml:"password"` // 数据库密码
 		Pool     PoolConfig `yaml:"pool" toml:"pool"`         // 连接池配置
+		Log      LogConfig  `yaml:"log" toml:"log"`           // 日志配置
 	}
 
 	// DatabaseConfig 数据库配置
@@ -55,6 +64,9 @@ func DefaultInstanceConfig() InstanceConfig {
 		Username: "root",      // 默认用户名
 		Password: "",          // 默认密码为空
 		Pool:     DefaultPoolConfig(),
+		Log: LogConfig{
+			Level: "silent", // 默认为静默模式
+		},
 	}
 }
 

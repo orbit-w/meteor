@@ -76,6 +76,9 @@ func TestConfigLoader_LoadConfig(t *testing.T) {
 			require.NotEmpty(t, instance.Databases)
 			assert.Equal(t, "test", instance.Databases[0].Name)
 			assert.Equal(t, ReadOnly, instance.Databases[0].Mode)
+
+			// 验证日志配置
+			assert.Equal(t, "info", instance.Config.Log.Level)
 		})
 	}
 }

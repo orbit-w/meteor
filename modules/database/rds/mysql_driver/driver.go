@@ -69,16 +69,16 @@ func (m *GormInstanceMgr) initializeDB(key DatabaseKey, instanceCfg InstanceConf
 
 	// 创建GORM实例
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
+		Logger: logger.Default.LogMode(getLogLevel(instanceCfg.Log.Level)),
 	})
 	if err != nil {
-		return fmt.Errorf("连接失败: %w", err)
+		return NewConnectionError(instanceCfg.Host, instanceCfg.Port, instanceCfg.Username, err)
 	}
 
 	// 配置连接池
 	sqlDB, err := db.DB()
 	if err != nil {
-		return fmt.Errorf("获取底层连接失败: %w", err)
+		return NewSQLDBError(instanceCfg.Host, instanceCfg.Port, err)
 	}
 
 	sqlDB.SetMaxIdleConns(instanceCfg.Pool.MaxIdleConns)
@@ -91,7 +91,7 @@ func (m *GormInstanceMgr) initializeDB(key DatabaseKey, instanceCfg InstanceConf
 	// 使用 Ping 探活
 	if err := sqlDB.PingContext(ctx); err != nil {
 		_ = sqlDB.Close()
-		return fmt.Errorf("探活检查失败: %w", err)
+		return NewPingError(instanceCfg.Host, instanceCfg.Port, err)
 	}
 
 	// 存储实例

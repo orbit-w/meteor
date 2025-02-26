@@ -7,6 +7,8 @@ instances:
       pool:
         max_idle_conns: 10
         max_open_conns: 100
+      log:
+        level: "info"  # 可选值: silent, error, warn, info
     databases:
       - name: "test"
         mode: "readonly"

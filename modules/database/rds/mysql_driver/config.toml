@@ -12,6 +12,10 @@ password = ""
 max_idle_conns = 10  # 最大空闲连接数
 max_open_conns = 100 # 最大打开连接数
 
+# 日志配置
+[instances.config.log]
+level = "info"  # 可选值: silent, error, warn, info
+
 # 数据库配置
 [[instances.databases]]
 name = "test"
@@ -33,6 +37,12 @@ password = "pass2"
 max_idle_conns = 5
 max_open_conns = 50
 
+# 日志配置
+[instances.config.log]
+level = "info"  # 可选值: silent, error, warn, info
+
 [[instances.databases]]
 name = "db2"
 mode = "readonly"
+
+
