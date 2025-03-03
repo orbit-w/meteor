@@ -24,14 +24,14 @@ type (
 		Port     int        `yaml:"port" toml:"port"`         // 端口号
 		Username string     `yaml:"username" toml:"username"` // 数据库用户名
 		Password string     `yaml:"password" toml:"password"` // 数据库密码
+		Mode     AccessMode `yaml:"mode" toml:"mode"`         // 访问模式
 		Pool     PoolConfig `yaml:"pool" toml:"pool"`         // 连接池配置
 		Log      LogConfig  `yaml:"log" toml:"log"`           // 日志配置
 	}
 
 	// DatabaseConfig 数据库配置
 	DatabaseConfig struct {
-		Name string     `yaml:"name" toml:"name"` // 数据库名称
-		Mode AccessMode `yaml:"mode" toml:"mode"` // 访问模式
+		Name string `yaml:"name" toml:"name"` // 数据库名称
 	}
 
 	// ManagerConfig 集中式连接配置
@@ -64,6 +64,7 @@ func DefaultInstanceConfig() InstanceConfig {
 		Username: "root",      // 默认用户名
 		Password: "",          // 默认密码为空
 		Pool:     DefaultPoolConfig(),
+		Mode:     ReadOnly, // 默认为只读模式
 		Log: LogConfig{
 			Level: "silent", // 默认为静默模式
 		},
@@ -82,11 +83,9 @@ func DefaultManagerConfig() ManagerConfig {
 				Databases: []DatabaseConfig{
 					{
 						Name: "test",
-						Mode: ReadOnly,
 					},
 					{
 						Name: "test",
-						Mode: ReadWrite,
 					},
 				},
 			},

@@ -3,7 +3,7 @@ instances:
       host: "localhost"
       port: 3306
       username: "root"
-      password: ""
+      password: "123456"
       pool:
         max_idle_conns: 10
         max_open_conns: 100

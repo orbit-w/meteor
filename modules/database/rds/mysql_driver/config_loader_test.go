@@ -67,6 +67,7 @@ func TestConfigLoader_LoadConfig(t *testing.T) {
 			assert.Equal(t, 3306, instance.Config.Port)
 			assert.Equal(t, "root", instance.Config.Username)
 			assert.Equal(t, "", instance.Config.Password)
+			assert.Equal(t, ReadOnly, instance.Config.Mode)
 
 			// 验证连接池配置
 			assert.Equal(t, 10, instance.Config.Pool.MaxIdleConns)
@@ -75,7 +76,6 @@ func TestConfigLoader_LoadConfig(t *testing.T) {
 			// 验证数据库配置
 			require.NotEmpty(t, instance.Databases)
 			assert.Equal(t, "test", instance.Databases[0].Name)
-			assert.Equal(t, ReadOnly, instance.Databases[0].Mode)
 
 			// 验证日志配置
 			assert.Equal(t, "info", instance.Config.Log.Level)
@@ -223,6 +223,7 @@ mode = "readonly"`
 			assert.Equal(t, 3306, instance.Config.Port)
 			assert.Equal(t, "root", instance.Config.Username)
 			assert.Equal(t, "", instance.Config.Password)
+			assert.Equal(t, ReadOnly, instance.Config.Mode)
 
 			// 验证连接池配置
 			assert.Equal(t, 10, instance.Config.Pool.MaxIdleConns)
@@ -231,7 +232,6 @@ mode = "readonly"`
 			// 验证数据库配置
 			require.NotEmpty(t, instance.Databases)
 			assert.Equal(t, "test", instance.Databases[0].Name)
-			assert.Equal(t, ReadOnly, instance.Databases[0].Mode)
 
 			// 验证日志配置
 			assert.Equal(t, "info", instance.Config.Log.Level)

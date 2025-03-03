@@ -28,20 +28,40 @@ var testConfig = ManagerConfig{
 				Host:     "localhost",
 				Port:     3306,
 				Username: "root",
-				Password: "",
+				Password: "123456",
+				Mode:     ReadOnly,
 				Pool: PoolConfig{
 					MaxIdleConns: 10,
 					MaxOpenConns: 100,
+				},
+				Log: LogConfig{
+					Level: "info",
 				},
 			},
 			Databases: []DatabaseConfig{
 				{
 					Name: "test",
-					Mode: ReadOnly,
 				},
+			},
+		},
+		{
+			Config: InstanceConfig{
+				Host:     "localhost",
+				Port:     3306,
+				Username: "root",
+				Password: "123456",
+				Mode:     ReadWrite,
+				Pool: PoolConfig{
+					MaxIdleConns: 10,
+					MaxOpenConns: 100,
+				},
+				Log: LogConfig{
+					Level: "info",
+				},
+			},
+			Databases: []DatabaseConfig{
 				{
 					Name: "test",
-					Mode: ReadWrite,
 				},
 			},
 		},
@@ -73,11 +93,11 @@ func TestNew(t *testing.T) {
 							Port:     3306,
 							Username: "test_user",
 							Password: "test_password",
+							Mode:     ReadOnly,
 						},
 						Databases: []DatabaseConfig{
 							{
 								Name: "test",
-								Mode: ReadOnly,
 							},
 						},
 					},
@@ -98,11 +118,11 @@ func TestNew(t *testing.T) {
 							Port:     testConfig.Instances[0].Config.Port,
 							Username: "invalid_user",
 							Password: "invalid_password",
+							Mode:     ReadOnly,
 						},
 						Databases: []DatabaseConfig{
 							{
 								Name: "test",
-								Mode: ReadOnly,
 							},
 						},
 					},
@@ -135,10 +155,11 @@ func TestNew(t *testing.T) {
 				// 如果是有效配置，测试实例是否初始化成功
 				if len(tt.config.Instances) > 0 {
 					for _, inst := range tt.config.Instances {
+						model := inst.Config.Mode
 						for _, db := range inst.Databases {
 							key := DatabaseKey{
 								Database: db.Name,
-								Mode:     db.Mode,
+								Mode:     model,
 							}
 							// 检查实例是否存在
 							val, ok := mgr.instances.Load(key)
@@ -313,11 +334,11 @@ func TestGormInstanceMgr_ConnectionFailure(t *testing.T) {
 					Port:     3306,
 					Username: "test_user",
 					Password: "test_password",
+					Mode:     ReadOnly,
 				},
 				Databases: []DatabaseConfig{
 					{
 						Name: "test",
-						Mode: ReadOnly,
 					},
 				},
 			},

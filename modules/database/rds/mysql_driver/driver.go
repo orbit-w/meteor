@@ -46,10 +46,11 @@ func New(cfg ManagerConfig) (*GormInstanceMgr, error) {
 	// 预初始化所有实例的数据库连接
 	for _, instance := range cfg.Instances {
 		// 初始化每个数据库
+		mode := instance.Config.Mode
 		for _, db := range instance.Databases {
 			key := DatabaseKey{
 				Database: db.Name,
-				Mode:     db.Mode,
+				Mode:     mode,
 			}
 
 			if err := mgr.initializeDB(key, instance.Config); err != nil {
