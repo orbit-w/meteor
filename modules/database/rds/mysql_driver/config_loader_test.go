@@ -10,44 +10,75 @@ import (
 )
 
 func TestConfigLoader_LoadConfig(t *testing.T) {
-	// 获取当前目录
-	currentDir, err := os.Getwd()
-	require.NoError(t, err)
+	// 创建临时测试目录
+	tempDir := t.TempDir()
+
+	// 准备测试配置文件
+	yamlConfig := `instances:
+  - config:
+      host: "localhost"
+      port: 3306
+      username: "root"
+      password: ""
+      pool:
+        maxIdleConns: 10
+        maxOpenConns: 100
+      log:
+        level: "info"
+    databases:
+      - name: "test"
+        mode: "readonly"`
+
+	tomlConfig := `[[instances]]
+config.host = "localhost"
+config.port = 3306
+config.username = "root"
+config.password = ""
+config.pool.maxIdleConns = 10
+config.pool.maxOpenConns = 100
+config.log.level = "info"
+
+[[instances.databases]]
+name = "test"
+mode = "readonly"`
+
+	// 创建测试文件
+	yamlPath := filepath.Join(tempDir, "config.yaml")
+	tomlPath := filepath.Join(tempDir, "config.toml")
+	require.NoError(t, os.WriteFile(yamlPath, []byte(yamlConfig), 0644))
+	require.NoError(t, os.WriteFile(tomlPath, []byte(tomlConfig), 0644))
 
 	tests := []struct {
 		name     string
-		filename string
+		filePath string
 		wantErr  bool
 	}{
 		{
 			name:     "Load config.yaml",
-			filename: "config.yaml",
+			filePath: yamlPath,
 			wantErr:  false,
 		},
 		{
 			name:     "Load config.toml",
-			filename: "config.toml",
+			filePath: tomlPath,
 			wantErr:  false,
 		},
 		{
 			name:     "Non-existent file",
-			filename: "non_existent.yaml",
+			filePath: filepath.Join(tempDir, "non_existent.yaml"),
 			wantErr:  true,
 		},
 		{
 			name:     "Invalid file extension",
-			filename: "config.txt",
+			filePath: filepath.Join(tempDir, "config.txt"),
 			wantErr:  true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// 创建配置加载器，使用当前目录
-			loader := NewConfigLoader(currentDir)
-
-			// 加载配置
-			config, err := loader.LoadConfig(tt.filename)
+			loader := NewConfigLoader()
+			config, err := loader.LoadConfig(tt.filePath)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -83,29 +114,23 @@ func TestConfigLoader_LoadConfig(t *testing.T) {
 	}
 }
 
-func TestConfigLoader_SearchPaths(t *testing.T) {
-	// 创建嵌套的测试目录结构
+func TestConfigLoader_DirectPath(t *testing.T) {
+	// 创建临时测试目录
 	tempDir := t.TempDir()
-	configDir := filepath.Join(tempDir, "config")
-	require.NoError(t, os.MkdirAll(configDir, 0755))
 
-	// 在 config 目录中创建配置文件
-	configPath := filepath.Join(configDir, "mysql.yaml")
+	// 创建配置文件
+	configPath := filepath.Join(tempDir, "mysql.yaml")
 	yamlConfig := `instances:
   - config:
       host: "localhost"
       port: 3306`
 	require.NoError(t, os.WriteFile(configPath, []byte(yamlConfig), 0644))
 
-	// 切换到临时目录
-	oldWd, err := os.Getwd()
-	require.NoError(t, err)
-	defer os.Chdir(oldWd)
-	require.NoError(t, os.Chdir(tempDir))
-
-	// 测试搜索路径
+	// 测试直接使用文件路径
 	loader := NewConfigLoader()
-	config, err := loader.LoadConfig("mysql.yaml")
+	config, err := loader.LoadConfig(configPath)
 	assert.NoError(t, err)
 	assert.NotNil(t, config)
+	assert.Equal(t, "localhost", config.Instances[0].Config.Host)
+	assert.Equal(t, 3306, config.Instances[0].Config.Port)
 }

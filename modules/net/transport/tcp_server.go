@@ -2,8 +2,9 @@ package transport
 
 import (
 	"context"
-	gnetwork "github.com/orbit-w/meteor/modules/net/network"
 	"net"
+
+	gnetwork "github.com/orbit-w/meteor/modules/net/network"
 )
 
 /*
