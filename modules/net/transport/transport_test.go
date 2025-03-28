@@ -39,7 +39,7 @@ func Test_Echo_Monitor(t *testing.T) {
 	defer s.Stop()
 	ctx := context.Background()
 
-	conn := DialContextByDefaultOp(context.Background(), host)
+	conn := DialWithOps(context.Background(), host)
 	defer func() {
 		_ = conn.Close()
 	}()
@@ -69,14 +69,14 @@ func Test_Echo_Monitor(t *testing.T) {
 func Test_CloseWithNoBlocking(t *testing.T) {
 	host := "127.0.0.1:6800"
 	ServeTest(t, host, true)
-	conn := DialContextByDefaultOp(context.Background(), host)
+	conn := DialWithOps(context.Background(), host)
 	_ = conn.Close()
 }
 
 func Test_Heartbeat(t *testing.T) {
 	host := "127.0.0.1:6800"
 	ServeTest(t, host, true)
-	conn := DialContextByDefaultOp(context.Background(), host)
+	conn := DialWithOps(context.Background(), host)
 	_ = conn.Send([]byte("hello, Server"))
 	time.Sleep(time.Minute * 10)
 }
@@ -92,7 +92,7 @@ func Test_Transport(t *testing.T) {
 	s := ServeTest(t, host, true)
 	ctx := context.Background()
 
-	conn := DialContextByDefaultOp(context.Background(), host)
+	conn := DialWithOps(context.Background(), host)
 	defer func() {
 		_ = conn.Close()
 	}()
@@ -212,7 +212,7 @@ func echoConcurrencyTest(t *testing.T, execNum, size, num int) {
 	fmt.Println("Server Addr: ", host)
 	conns := make([]IConn, num)
 	for i := 0; i < num; i++ {
-		conn := DialContextByDefaultOp(ctx, host)
+		conn := DialWithOps(ctx, host)
 		go func() {
 			for {
 				_, err := conn.Recv(ctx)
