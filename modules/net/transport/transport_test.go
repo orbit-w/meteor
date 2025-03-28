@@ -124,7 +124,7 @@ func Test_Gzip(t *testing.T) {
 	s := ServeGzipTest(t, host, true)
 	ctx := context.Background()
 
-	conn := DialContextWithOps(context.Background(), host, DefaultGzipDialOption())
+	conn := DialContext(context.Background(), host, DefaultGzipDialOption())
 	defer func() {
 		_ = conn.Close()
 	}()

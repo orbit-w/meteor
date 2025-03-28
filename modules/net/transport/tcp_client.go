@@ -46,18 +46,14 @@ type TcpClient struct {
 	logger    *mlog.Logger
 }
 
-func DialContextByDefaultOp(ctx context.Context, remoteAddr string) IConn {
-	op := DefaultDialOption()
-	return DialContextWithOps(ctx, remoteAddr, op)
-}
-
 // DialWithOps Encapsulates asynchronous TCP connection establishment (with retries and backoff)
-func DialWithOps(remoteAddr string, _ops ...*DialOption) IConn {
-	return DialContextWithOps(context.Background(), remoteAddr, _ops...)
+func DialWithOps(ctx context.Context, remoteAddr string, _ops ...Opt) IConn {
+	dp := DefaultDialOption()
+	return DialContext(ctx, remoteAddr, dp, _ops...)
 }
 
-func DialContextWithOps(ctx context.Context, remoteAddr string, _ops ...*DialOption) IConn {
-	dp := parseOptions(_ops...)
+func DialContext(ctx context.Context, remoteAddr string, dp *DialOption, _ops ...Opt) IConn {
+	parseOptions(dp, _ops...)
 	_ctx, cancel := context.WithCancel(ctx)
 	buf := new(ControlBuffer)
 	BuildControlBuffer(buf, dp.MaxIncomingPacket)
@@ -80,7 +76,12 @@ func DialContextWithOps(ctx context.Context, remoteAddr string, _ops ...*DialOpt
 		tc.m = NewMonitor()
 	}
 
-	go tc.handleDial(dp)
+	if dp.IsBlock {
+		tc.handleDial(dp)
+	} else {
+		go tc.handleDial(dp)
+	}
+
 	return tc
 }
 
@@ -331,19 +332,12 @@ func withRetry(handle func() error) error {
 	}
 }
 
-func parseOptions(ops ...*DialOption) (dp *DialOption) {
-	dp = new(DialOption)
-	if len(ops) > 0 {
-		op := ops[0]
-		if op.MaxIncomingPacket > 0 {
-			dp.MaxIncomingPacket = op.MaxIncomingPacket
-		}
-		dp.IsBlock = op.IsBlock
-		dp.IsGzip = op.IsGzip
-		dp.DisconnectHandler = op.DisconnectHandler
-		dp.ReadTimeout = op.ReadTimeout
-		dp.WriteTimeout = op.WriteTimeout
+func parseOptions(dp *DialOption, ops ...Opt) {
+	for i := range ops {
+		op := ops[i]
+		op(dp)
 	}
+
 	if dp.MaxIncomingPacket <= 0 {
 		dp.MaxIncomingPacket = MaxIncomingPacket
 	}

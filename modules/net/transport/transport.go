@@ -2,8 +2,9 @@ package transport
 
 import (
 	"context"
-	"github.com/orbit-w/meteor/modules/net/network"
 	"time"
+
+	"github.com/orbit-w/meteor/modules/net/network"
 )
 
 /*
@@ -63,4 +64,41 @@ func DefaultDevelopDialOption(isGzip bool) *DialOption {
 
 type ConnOption struct {
 	MaxIncomingPacket uint32
+}
+
+func IsBlockOption(block bool, dp *DialOption) {
+	dp.IsBlock = block
+}
+
+type Opt func(dp *DialOption)
+
+func WithBlock(block bool) Opt {
+	return func(dp *DialOption) {
+		dp.IsBlock = block
+	}
+}
+
+func WithGzip(gzip bool) Opt {
+	return func(dp *DialOption) {
+		dp.IsGzip = gzip
+	}
+}
+
+func WithMaxIncomingPacket(maxIncomingPacket uint32) Opt {
+	return func(dp *DialOption) {
+		dp.MaxIncomingPacket = maxIncomingPacket
+	}
+}
+
+func WithNeedToMonitor(needToMonitor bool) Opt {
+	return func(dp *DialOption) {
+		dp.NeedToMonitor = needToMonitor
+	}
+}
+
+func WithTimeout(readTimeout, writeTimeout time.Duration) Opt {
+	return func(dp *DialOption) {
+		dp.ReadTimeout = readTimeout
+		dp.WriteTimeout = writeTimeout
+	}
 }

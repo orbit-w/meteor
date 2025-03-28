@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"log"
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 /*
@@ -21,7 +22,7 @@ import (
 func Benchmark_SendTest(b *testing.B) {
 	host := "127.0.0.1:6800"
 	ServeTest(b, host, false)
-	conn := DialContextByDefaultOp(context.Background(), host)
+	conn := DialWithOps(context.Background(), host)
 
 	ctx := context.Background()
 
@@ -98,7 +99,7 @@ func benchmarkEcho(b *testing.B, size, num int) {
 	fmt.Println("Exec Number: ", b.N)
 	conns := make([]IConn, num)
 	for i := 0; i < num; i++ {
-		conn := DialContextByDefaultOp(ctx, host)
+		conn := DialWithOps(ctx, host)
 		conns[i] = conn
 	}
 
