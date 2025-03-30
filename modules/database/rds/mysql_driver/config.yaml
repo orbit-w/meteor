@@ -3,7 +3,8 @@ instances:
       host: "localhost"
       port: 3306
       username: "root"
-      password: ""
+      password: "123456"
+      mode: "readonly"
       pool:
         max_idle_conns: 10
         max_open_conns: 100
@@ -11,9 +12,7 @@ instances:
         level: "info"  # 可选值: silent, error, warn, info
     databases:
       - name: "test"
-        mode: "readonly"
       - name: "test"
-        mode: "readwrite"
   - config:
       host: "host2"
       # ... 其他实例配置

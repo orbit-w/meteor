@@ -5,7 +5,8 @@
 host = "localhost"
 port = 3306
 username = "root"
-password = ""
+password = "123456"
+mode = "readonly"  # 访问模式: readonly 或 readwrite
 
 # 连接池配置
 [instances.config.pool]
@@ -19,11 +20,9 @@ level = "info"  # 可选值: silent, error, warn, info
 # 数据库配置
 [[instances.databases]]
 name = "test"
-mode = "readonly"
 
 [[instances.databases]]
 name = "test"
-mode = "readwrite"
 
 # 第二个实例配置（示例）
 [[instances]]
@@ -32,6 +31,7 @@ host = "host2"
 port = 3306
 username = "user2"
 password = "pass2"
+mode = "readwrite"  # 访问模式: readonly 或 readwrite
 
 [instances.config.pool]
 max_idle_conns = 5
@@ -43,6 +43,5 @@ level = "info"  # 可选值: silent, error, warn, info
 
 [[instances.databases]]
 name = "db2"
-mode = "readonly"
 
 
